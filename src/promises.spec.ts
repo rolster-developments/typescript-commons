@@ -2,7 +2,7 @@ import {
   catchPromise,
   fromPromise,
   securePromise,
-  thenPromise,
+  resolvePromise,
   voidPromise,
   zipPromise
 } from './promises';
@@ -42,9 +42,9 @@ describe('Promises', () => {
   });
 
   it('should execute test of "thenPromise" successful', async () => {
-    expect(await thenPromise(Promise.resolve(20))).toBe(undefined);
+    expect(await resolvePromise(Promise.resolve(20))).toBe(undefined);
 
-    expect(await thenPromise(Promise.reject('Error')).catch((err) => err)).toBe(
+    expect(await resolvePromise(Promise.reject('Error')).catch((err) => err)).toBe(
       'Error'
     );
   });

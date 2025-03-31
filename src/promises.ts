@@ -1,18 +1,19 @@
 import { itIsDefined } from './helpers';
 
+type CatchError = (err: any) => void;
+
 export function fromPromise<T>(value: T | Promise<T>): Promise<T> {
   return value instanceof Promise ? value : Promise.resolve(value);
 }
 
-export function thenPromise<T>(
+export function resolvePromise<T>(
   promise: Promise<T>,
-  canLogError = false
+  catchError?: CatchError
 ): Promise<void> {
   return promise
     .then(() => undefined)
     .catch((err) => {
-      /* istanbul ignore next */
-      canLogError && console.log(err);
+      catchError && catchError(err);
 
       throw err;
     });
@@ -20,13 +21,12 @@ export function thenPromise<T>(
 
 export function voidPromise<T>(
   promise: Promise<T>,
-  canLogError = false
+  catchError?: CatchError
 ): Promise<void> {
   return promise
     .then(() => undefined)
     .catch((err) => {
-      /* istanbul ignore next */
-      canLogError && console.log(err);
+      catchError && catchError(err);
 
       return undefined;
     });
@@ -34,11 +34,10 @@ export function voidPromise<T>(
 
 export function catchPromise<T>(
   promise: Promise<T>,
-  canLogError = false
+  catchError?: CatchError
 ): Promise<Undefined<T>> {
   return promise.catch((err) => {
-    /* istanbul ignore next */
-    canLogError && console.log(err);
+    catchError && catchError(err);
 
     return undefined;
   });
