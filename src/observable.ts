@@ -1,28 +1,38 @@
-export type Observer<T> = (value: T) => void;
+export type Observer<T = any> = (value: T) => void;
 
-class RolsterObservable<T = any> {
+export interface Observable<T = any> {
+  next(state: T): void;
+  readonly state: T;
+  subscribe(observer: Observer<T>): Unsubscription;
+}
+
+class RolsterObservable<T = any> implements Observable<T> {
   private observers: Observer<T>[] = [];
 
-  private currentState: T;
+  private _state: T;
 
   constructor(state: T) {
-    this.currentState = state;
+    this._state = state;
+  }
+
+  public get state(): T {
+    return this._state;
   }
 
   public subscribe(observer: Observer<T>): Unsubscription {
     this.observers.push(observer);
 
-    observer(this.currentState);
+    observer(this._state);
 
     return () => {
       this.observers = this.observers.filter(
-        (currentObserver) => currentObserver !== observer
+        (_observer) => _observer !== observer
       );
     };
   }
 
   public next(state: T): void {
-    this.currentState = state;
+    this._state = state;
 
     this.observers.forEach((observer) => {
       observer(state);
@@ -30,10 +40,8 @@ class RolsterObservable<T = any> {
   }
 }
 
-export type Observable<T> = RolsterObservable<T>;
-
-export function observable<T>(state: T): RolsterObservable<T>;
-export function observable<T>(): RolsterObservable<T | undefined>;
-export function observable<T>(state?: T): RolsterObservable<T | undefined> {
+export function observable<T>(state: T): Observable<T>;
+export function observable<T>(): Observable<T | undefined>;
+export function observable<T>(state?: T): Observable<T | undefined> {
   return new RolsterObservable(state);
 }
