@@ -17,9 +17,11 @@ class LastName {
 class Person {
   public readonly occupation: string = 'None';
 
-  private ageState = 20;
+  private _age = 20;
 
   public readonly lastName: LastName;
+
+  private _isAdult?: boolean;
 
   constructor(
     public readonly firstName: string,
@@ -33,11 +35,19 @@ class Person {
   }
 
   public get age(): number {
-    return this.ageState;
+    return this._age;
+  }
+
+  public get isAdult(): boolean {
+    if (!this._isAdult) {
+      this._isAdult = this._age >= 18;
+    }
+
+    return this._isAdult;
   }
 
   public setAge(age: number): void {
-    this.ageState = age;
+    this._age = age;
   }
 }
 
@@ -136,31 +146,51 @@ describe('Helpers', () => {
   });
 
   it('should execute test of "clone" with CustomClass successful', () => {
-    const person = new Person('Katherin', 'Bolaño');
+    const person1 = new Person('Katherin', 'Bolaño');
 
-    expect(person).toBeDefined();
-    expect(person.fullName).toBe('Katherin Bolaño');
-    expect(person.age).toBe(20);
+    expect(person1).toBeDefined();
+    expect(person1.fullName).toBe('Katherin Bolaño');
+    expect(person1.age).toBe(20);
 
-    const _person1 = clone(person);
+    const person1C1 = clone(person1);
 
-    expect(_person1).toBeDefined();
+    expect(person1C1).toBeDefined();
 
-    _person1.setAge(30);
+    person1C1.setAge(30);
 
-    expect(person.age).toBe(20);
-    expect(person.fullName).toBe('Katherin Bolaño');
-    expect(_person1.age).toBe(30);
-    expect(_person1.fullName).toBe('Katherin Bolaño');
+    expect(person1.age).toBe(20);
+    expect(person1.fullName).toBe('Katherin Bolaño');
+    expect(person1C1.age).toBe(30);
+    expect(person1C1.fullName).toBe('Katherin Bolaño');
 
-    const _person2 = clone(person, { occupation: 'Instrumentadora' });
+    const person1C2 = clone(person1, { occupation: 'Instrumentadora' });
 
-    expect(_person2).toBeDefined();
+    expect(person1C2).toBeDefined();
 
-    expect(person.occupation).toBe('None');
-    expect(_person2.age).toBe(20);
-    expect(_person2.fullName).toBe('Katherin Bolaño');
-    expect(_person2.occupation).toBe('Instrumentadora');
+    expect(person1.occupation).toBe('None');
+    expect(person1C2.age).toBe(20);
+    expect(person1C2.fullName).toBe('Katherin Bolaño');
+    expect(person1C2.occupation).toBe('Instrumentadora');
+
+    const person2 = new Person('Daniel', 'Castillo');
+    person2.setAge(16);
+
+    expect(person2).toBeDefined();
+    expect(person2.fullName).toBe('Daniel Castillo');
+    expect(person2.age).toBe(16);
+    expect(person2.isAdult).toBe(false);
+
+    const person2C1 = clone(person2);
+
+    expect(person2C1).toBeDefined();
+    expect(person2C1.age).toBe(16);
+    expect(person2C1.isAdult).toBe(false);
+
+    const person2C2 = clone(person2, {}, /\b_\w+\b/);
+
+    expect(person2C2).toBeDefined();
+    expect(person2C2.age).toBe(20);
+    expect(person2C2.isAdult).toBe(true);
   });
 
   it('should execute test of "freeze" successful', () => {

@@ -13,7 +13,8 @@ type ReplaceClone<C> = Partial<{ [K in keyof C]: C[K] }>;
 function _clone<O>(
   object: O,
   caches: unknown[],
-  replaces?: ReplaceClone<O>
+  replaces?: ReplaceClone<O>,
+  ignoreKeysRegex?: RegExp
 ): O {
   if (typeof object !== 'object') {
     return object;
@@ -30,8 +31,7 @@ function _clone<O>(
     caches.push(object);
   }
 
-  const prototypeObject = Object.getPrototypeOf(object);
-  const ConstructorObject = prototypeObject.constructor;
+  const ConstructorObject = Object.getPrototypeOf(object).constructor;
 
   if (PRIMITIVES.includes(ConstructorObject)) {
     return new ConstructorObject(object);
@@ -40,9 +40,11 @@ function _clone<O>(
   const _object: O = new ConstructorObject();
 
   for (const key in object) {
-    _object[key] = replaces
-      ? replaces[key] ?? _clone<any>(object[key], caches)
-      : _clone<any>(object[key], caches);
+    if (!ignoreKeysRegex?.test(key)) {
+      _object[key] = replaces
+        ? replaces[key] ?? _clone<any>(object[key], caches)
+        : _clone<any>(object[key], caches);
+    }
   }
 
   return _object;
@@ -76,8 +78,12 @@ export function evalValueOrFunction<T>(value: ValueOrFunction<T>): T {
   return typeof value === 'function' ? (value as Function)() : value;
 }
 
-export function clone<O>(object: O, replaces?: ReplaceClone<O>): O {
-  return _clone(object, [], replaces);
+export function clone<O>(
+  object: O,
+  replaces?: ReplaceClone<O>,
+  ignoreKeysRegex?: RegExp
+): O {
+  return _clone(object, [], replaces, ignoreKeysRegex);
 }
 
 export function freeze<A>(object: A): Readonly<A> {
