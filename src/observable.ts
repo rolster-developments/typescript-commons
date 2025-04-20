@@ -1,6 +1,7 @@
 export type Observer<T = any> = (value: T) => void;
 
 export interface Observable<T = any> {
+  listen(observer: Observer<T>): Unsubscription;
   next(state: T): void;
   readonly state: T;
   subscribe(observer: Observer<T>): Unsubscription;
@@ -23,6 +24,16 @@ class RolsterObservable<T = any> implements Observable<T> {
     this.observers.push(observer);
 
     observer(this._state);
+
+    return () => {
+      this.observers = this.observers.filter(
+        (_observer) => _observer !== observer
+      );
+    };
+  }
+
+  public listen(observer: Observer<T>): Unsubscription {
+    this.observers.push(observer);
 
     return () => {
       this.observers = this.observers.filter(
