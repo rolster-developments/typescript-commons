@@ -14,7 +14,7 @@ function _clone<O>(
   object: O,
   caches: unknown[],
   replaces?: ReplaceClone<O>,
-  regexKeysIgnore?: RegExp
+  isIncludePrivates?: boolean
 ): O {
   if (typeof object !== 'object') {
     return object;
@@ -40,7 +40,9 @@ function _clone<O>(
   const _object: O = new ConstructorObject();
 
   for (const key in object) {
-    if (!regexKeysIgnore?.test(key)) {
+    const isKeyPrivate = /\b_\w+\b/.test(key);
+
+    if (!(!isIncludePrivates && isKeyPrivate)) {
       _object[key] = replaces
         ? replaces[key] ?? _clone<any>(object[key], caches)
         : _clone<any>(object[key], caches);
@@ -81,9 +83,9 @@ export function evalValueOrFunction<T>(value: ValueOrFunction<T>): T {
 export function clone<O>(
   object: O,
   replaces?: ReplaceClone<O>,
-  regexKeysIgnore?: RegExp
+  isIncludePrivates?: boolean
 ): O {
-  return _clone(object, [], replaces, regexKeysIgnore);
+  return _clone(object, [], replaces, isIncludePrivates);
 }
 
 export function freeze<O>(object: O): Readonly<O> {

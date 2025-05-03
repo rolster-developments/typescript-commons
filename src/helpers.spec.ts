@@ -146,51 +146,53 @@ describe('Helpers', () => {
   });
 
   it('should execute test of "clone" with CustomClass successful', () => {
-    const person1 = new Person('Katherin', 'Bolaño');
+    const katherin = new Person('Katherin', 'Bolaño');
 
-    expect(person1).toBeDefined();
-    expect(person1.fullName).toBe('Katherin Bolaño');
-    expect(person1.age).toBe(20);
+    expect(katherin).toBeDefined();
+    expect(katherin.fullName).toBe('Katherin Bolaño');
+    expect(katherin.age).toBe(20);
 
-    const person1C1 = clone(person1);
+    const katherin1 = clone(katherin);
 
-    expect(person1C1).toBeDefined();
+    expect(katherin1).toBeDefined();
 
-    person1C1.setAge(30);
+    katherin1.setAge(30);
 
-    expect(person1.age).toBe(20);
-    expect(person1.fullName).toBe('Katherin Bolaño');
-    expect(person1C1.age).toBe(30);
-    expect(person1C1.fullName).toBe('Katherin Bolaño');
+    expect(katherin.fullName).toBe('Katherin Bolaño');
+    expect(katherin.age).toBe(20);
+    expect(katherin1.fullName).toBe('Katherin Bolaño');
+    expect(katherin1.age).toBe(30);
 
-    const person1C2 = clone(person1, { occupation: 'Instrumentadora' });
+    const katherin2 = clone(katherin, { occupation: 'Instrumentadora' });
 
-    expect(person1C2).toBeDefined();
+    expect(katherin2).toBeDefined();
 
-    expect(person1.occupation).toBe('None');
-    expect(person1C2.age).toBe(20);
-    expect(person1C2.fullName).toBe('Katherin Bolaño');
-    expect(person1C2.occupation).toBe('Instrumentadora');
+    expect(katherin.occupation).toBe('None');
+    expect(katherin2.fullName).toBe('Katherin Bolaño');
+    expect(katherin2.age).toBe(20);
+    expect(katherin2.occupation).toBe('Instrumentadora');
 
-    const person2 = new Person('Daniel', 'Castillo');
-    person2.setAge(16);
+    const daniel = new Person('Daniel', 'Castillo');
+    daniel.setAge(16);
 
-    expect(person2).toBeDefined();
-    expect(person2.fullName).toBe('Daniel Castillo');
-    expect(person2.age).toBe(16);
-    expect(person2.isAdult).toBe(false);
+    expect(daniel).toBeDefined();
+    expect(daniel.fullName).toBe('Daniel Castillo');
+    expect(daniel.age).toBe(16);
+    expect(daniel.isAdult).toBe(false);
 
-    const person2C1 = clone(person2);
+    const daniel1 = clone(daniel);
 
-    expect(person2C1).toBeDefined();
-    expect(person2C1.age).toBe(16);
-    expect(person2C1.isAdult).toBe(false);
+    expect(daniel1).toBeDefined();
+    expect(daniel1.fullName).toBe('Daniel Castillo');
+    expect(daniel1.age).toBe(20);
+    expect(daniel1.isAdult).toBe(true);
 
-    const person2C2 = clone(person2, {}, /\b_\w+\b/);
+    const daniel2 = clone(daniel, {}, true);
 
-    expect(person2C2).toBeDefined();
-    expect(person2C2.age).toBe(20);
-    expect(person2C2.isAdult).toBe(true);
+    expect(daniel2).toBeDefined();
+    expect(daniel2.fullName).toBe('Daniel Castillo');
+    expect(daniel2.age).toBe(16);
+    expect(daniel2.isAdult).toBe(false);
   });
 
   it('should execute test of "freeze" successful', () => {

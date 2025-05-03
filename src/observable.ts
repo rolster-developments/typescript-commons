@@ -22,7 +22,9 @@ class ObservableState<T = any> implements Observable<T> {
   }
 
   public get state(): Readonly<T> {
-    return freeze(clone(this._state));
+    return typeof this._state === 'object'
+      ? freeze(clone(this._state))
+      : this._state;
   }
 
   public subscribe(observer: Observer<T>): Unsubscription {
