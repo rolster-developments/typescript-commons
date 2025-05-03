@@ -14,7 +14,7 @@ function _clone<O>(
   object: O,
   caches: unknown[],
   replaces?: ReplaceClone<O>,
-  ignoreKeysRegex?: RegExp
+  regexKeysIgnore?: RegExp
 ): O {
   if (typeof object !== 'object') {
     return object;
@@ -40,7 +40,7 @@ function _clone<O>(
   const _object: O = new ConstructorObject();
 
   for (const key in object) {
-    if (!ignoreKeysRegex?.test(key)) {
+    if (!regexKeysIgnore?.test(key)) {
       _object[key] = replaces
         ? replaces[key] ?? _clone<any>(object[key], caches)
         : _clone<any>(object[key], caches);
@@ -81,14 +81,14 @@ export function evalValueOrFunction<T>(value: ValueOrFunction<T>): T {
 export function clone<O>(
   object: O,
   replaces?: ReplaceClone<O>,
-  ignoreKeysRegex?: RegExp
+  regexKeysIgnore?: RegExp
 ): O {
-  return _clone(object, [], replaces, ignoreKeysRegex);
+  return _clone(object, [], replaces, regexKeysIgnore);
 }
 
-export function freeze<A>(object: A): Readonly<A> {
-  for (const prop in object) {
-    const value = object[prop];
+export function freeze<O>(object: O): Readonly<O> {
+  for (const key in object) {
+    const value = object[key];
 
     if (typeof value === 'object' && !Object.isFrozen(value)) {
       freeze(value);
@@ -96,6 +96,18 @@ export function freeze<A>(object: A): Readonly<A> {
   }
 
   return Object.freeze(object);
+}
+
+export function seal<O>(object: O): Readonly<O> {
+  for (const key in object) {
+    const value = object[key];
+
+    if (typeof value === 'object' && !Object.isSealed(value)) {
+      seal(value);
+    }
+  }
+
+  return Object.seal(object);
 }
 
 export function callback<T = any>(

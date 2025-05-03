@@ -1,7 +1,7 @@
 export type SealedState<R> = Record<string, (value?: any) => R>;
 
 export class Sealed<R, V, T extends SealedState<R>> {
-  private currentOtherwise?: () => void;
+  private _otherwise?: () => void;
 
   protected constructor(
     private key: keyof T,
@@ -9,19 +9,17 @@ export class Sealed<R, V, T extends SealedState<R>> {
   ) {}
 
   public otherwise(otherwise: () => void): this {
-    this.currentOtherwise = otherwise;
+    this._otherwise = otherwise;
 
     return this;
   }
 
-  public when(resolver: T, whenOtherwise?: () => void): R {
+  public when(resolver: T, otherwise?: () => void): R {
     const handler = resolver[this.key];
 
-    const otherwise = whenOtherwise ?? this.currentOtherwise;
+    const _otherwise = otherwise ?? this._otherwise;
 
-    if (otherwise) {
-      otherwise();
-    }
+    _otherwise && _otherwise();
 
     if (handler) {
       return handler(this.value);
@@ -37,7 +35,7 @@ export class Sealed<R, V, T extends SealedState<R>> {
 }
 
 export class PartialSealed<R, V, T extends SealedState<R>> {
-  private currentOtherwise?: () => void;
+  private _otherwise?: () => void;
 
   protected constructor(
     private key: keyof T,
@@ -45,19 +43,17 @@ export class PartialSealed<R, V, T extends SealedState<R>> {
   ) {}
 
   public otherwise(otherwise: () => void): this {
-    this.currentOtherwise = otherwise;
+    this._otherwise = otherwise;
 
     return this;
   }
 
-  public when(resolver: Partial<T>, whenOtherwise?: () => void): Undefined<R> {
+  public when(resolver: Partial<T>, otherwise?: () => void): Undefined<R> {
     const handler = resolver[this.key];
 
-    const otherwise = whenOtherwise || this.currentOtherwise;
+    const _otherwise = otherwise || this._otherwise;
 
-    if (otherwise) {
-      otherwise();
-    }
+    _otherwise && _otherwise();
 
     return handler ? handler(this.value) : undefined;
   }
