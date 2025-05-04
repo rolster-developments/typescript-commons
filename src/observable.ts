@@ -18,7 +18,7 @@ class ObservableState<T = any> implements Observable<T> {
   private value: T;
 
   constructor(state: T) {
-    this.value = state;
+    this.value = clone(state);
   }
 
   public get state(): Readonly<T> {
@@ -43,10 +43,11 @@ class ObservableState<T = any> implements Observable<T> {
 
   public next(state: T): void {
     if (!this.isClosed) {
+      const value = clone(state);
       this.value = state;
 
       this.observers.forEach((observer) => {
-        observer(state);
+        observer(value);
       });
     }
   }
