@@ -1,4 +1,4 @@
-const PRIMITIVES = [Date, RegExp, Function, String, Boolean, Number];
+const PRIMITIVES = [Date, RegExp, Set, Map, Function, String, Boolean, Number];
 
 const SLICE_SIZE = 512;
 
@@ -10,11 +10,12 @@ type Calleable<T> = Undefined<(...args: any) => T>;
 
 type ReplaceClone<C> = Partial<{ [K in keyof C]: C[K] }>;
 
+export type Clonable<O> = (object: O, replaces?: ReplaceClone<O>) => O;
+
 function _clone<O>(
   object: O,
   caches: unknown[],
-  replaces?: ReplaceClone<O>,
-  isIncludePrivates?: boolean
+  replaces?: ReplaceClone<O>
 ): O {
   if (typeof object !== 'object') {
     return object;
@@ -37,16 +38,16 @@ function _clone<O>(
     return new ConstructorObject(object);
   }
 
+  if (Array.isArray(object)) {
+    return object.map((item) => _clone(item, caches, {})) as O;
+  }
+
   const _object: O = new ConstructorObject();
 
   for (const key in object) {
-    const isKeyPrivate = /\b_\w+\b/.test(key);
-
-    if (!(!isIncludePrivates && isKeyPrivate)) {
-      _object[key] = replaces
-        ? replaces[key] ?? _clone<any>(object[key], caches)
-        : _clone<any>(object[key], caches);
-    }
+    _object[key] = replaces
+      ? replaces[key] ?? _clone<any>(object[key], caches, {})
+      : _clone<any>(object[key], caches, {});
   }
 
   return _object;
@@ -80,12 +81,8 @@ export function evalValueOrFunction<T>(value: ValueOrFunction<T>): T {
   return typeof value === 'function' ? (value as Function)() : value;
 }
 
-export function clone<O>(
-  object: O,
-  replaces?: ReplaceClone<O>,
-  isIncludePrivates?: boolean
-): O {
-  return _clone(object, [], replaces, isIncludePrivates);
+export function clone<O>(object: O, replaces?: ReplaceClone<O>): O {
+  return _clone(object, [], replaces);
 }
 
 export function freeze<O>(object: O): Readonly<O> {

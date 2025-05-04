@@ -15,22 +15,22 @@ class ObservableState<T = any> implements Observable<T> {
 
   private isClosed = false;
 
-  private _state: T;
+  private value: T;
 
   constructor(state: T) {
-    this._state = state;
+    this.value = state;
   }
 
   public get state(): Readonly<T> {
-    return typeof this._state === 'object'
-      ? freeze(clone(this._state))
-      : this._state;
+    return typeof this.value === 'object'
+      ? freeze(clone(this.value))
+      : this.value;
   }
 
   public subscribe(observer: Observer<T>): Unsubscription {
     this.observers.push(observer);
 
-    observer(this._state);
+    observer(this.value);
 
     return this.unsubscriptor(observer);
   }
@@ -43,7 +43,7 @@ class ObservableState<T = any> implements Observable<T> {
 
   public next(state: T): void {
     if (!this.isClosed) {
-      this._state = state;
+      this.value = state;
 
       this.observers.forEach((observer) => {
         observer(state);

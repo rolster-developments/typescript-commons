@@ -184,15 +184,8 @@ describe('Helpers', () => {
 
     expect(daniel1).toBeDefined();
     expect(daniel1.fullName).toBe('Daniel Castillo');
-    expect(daniel1.age).toBe(20);
-    expect(daniel1.isAdult).toBe(true);
-
-    const daniel2 = clone(daniel, {}, true);
-
-    expect(daniel2).toBeDefined();
-    expect(daniel2.fullName).toBe('Daniel Castillo');
-    expect(daniel2.age).toBe(16);
-    expect(daniel2.isAdult).toBe(false);
+    expect(daniel1.age).toBe(16);
+    expect(daniel1.isAdult).toBe(false);
   });
 
   it('should execute test of "freeze" successful', () => {
