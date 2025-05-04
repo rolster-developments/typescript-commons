@@ -30,7 +30,7 @@ class ObservableState<T = any> implements Observable<T> {
   public subscribe(observer: Observer<T>): Unsubscription {
     this.observers.push(observer);
 
-    observer(this.value);
+    observer(clone(this.value));
 
     return this.unsubscriptor(observer);
   }
@@ -43,11 +43,10 @@ class ObservableState<T = any> implements Observable<T> {
 
   public next(state: T): void {
     if (!this.isClosed) {
-      const value = clone(state);
-      this.value = state;
+      this.value = clone(state);
 
       this.observers.forEach((observer) => {
-        observer(value);
+        observer(state);
       });
     }
   }
