@@ -10,9 +10,13 @@ type Calleable<T> = Undefined<(...args: any) => T>;
 
 type ReplaceClone<C> = Partial<{ [K in keyof C]: C[K] }>;
 
-export type Clonable<O> = (object: O, replaces?: ReplaceClone<O>) => O;
+export type Clonable<O = any> = (
+  object: O,
+  caches: unknown[],
+  replaces?: ReplaceClone<O>
+) => O;
 
-function _clone<O>(
+function rolsterClone<O>(
   object: O,
   caches: unknown[],
   replaces?: ReplaceClone<O>
@@ -39,18 +43,24 @@ function _clone<O>(
   }
 
   if (Array.isArray(object)) {
-    return object.map((item) => _clone(item, caches, {})) as O;
+    return object.map((item) => rolsterClone(item, caches, {})) as O;
   }
 
   const _object: O = new ConstructorObject();
 
   for (const key in object) {
     _object[key] = replaces
-      ? replaces[key] ?? _clone<any>(object[key], caches, {})
-      : _clone<any>(object[key], caches, {});
+      ? replaces[key] ?? rolsterClone(object[key], caches, {})
+      : rolsterClone(object[key], caches, {});
   }
 
   return _object;
+}
+
+let _clone: Clonable = rolsterClone;
+
+export function setClonable(clone: Clonable): void {
+  _clone = clone;
 }
 
 export function itIsDefined<T = any>(object: T): object is NonNullable<T> {
