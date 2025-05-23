@@ -1,81 +1,77 @@
-const PRIMITIVES = [Date, RegExp, Set, Map, Function, String, Boolean, Number];
+const primitives = [Date, RegExp, Set, Map, Function, String, Boolean, Number];
 
-const SLICE_SIZE = 512;
+const sliceSize = 512;
 
-const FALSY_VALUE = ['false', 'undefined', '0', 0];
-
-const prototypeToString = Object.prototype.toString;
+const falsyValue = ['false', 'undefined', '0', 0];
 
 type Calleable<T> = Undefined<(...args: any) => T>;
 
-type ReplaceClone<C> = Partial<{ [K in keyof C]: C[K] }>;
+export type CloneOverride<T> = Partial<{ [K in keyof T]: T[K] }>;
 
-export type Clonable<O = any> = (
-  object: O,
-  caches: unknown[],
-  replaces?: ReplaceClone<O>
-) => O;
+export type CloneStrategy<T = any> = (value: T, key: string) => boolean;
 
-function rolsterClone<O>(
-  object: O,
+let _cloneStrategy: CloneStrategy = () => true;
+
+function _clone<T>(
+  value: T,
   caches: unknown[],
-  replaces?: ReplaceClone<O>
-): O {
-  if (typeof object !== 'object') {
-    return object;
+  overrides?: CloneOverride<T>
+): T {
+  if (itIsUndefined(value) || typeof value !== 'object') {
+    return value;
   }
 
-  if (prototypeToString.call(object) === '[object Object]') {
-    const [_object] = caches.filter((_object) => _object === object);
+  if (Object.prototype.toString.call(value) === '[object Object]') {
+    const [object] = caches.filter((_object) => _object === value);
 
     /* istanbul ignore if */
-    if (_object) {
-      return _object as O;
+    if (object) {
+      return object as T;
     }
 
-    caches.push(object);
+    caches.push(value);
   }
 
-  const ConstructorObject = Object.getPrototypeOf(object).constructor;
+  const ConstructorObject = Object.getPrototypeOf(value).constructor;
 
-  if (PRIMITIVES.includes(ConstructorObject)) {
-    return new ConstructorObject(object);
+  if (primitives.includes(ConstructorObject)) {
+    return new ConstructorObject(value);
   }
 
-  if (Array.isArray(object)) {
-    return object.map((item) => rolsterClone(item, caches, {})) as O;
+  if (Array.isArray(value)) {
+    return value.map((item) => _clone(item, caches, {})) as T;
   }
 
-  const _object: O = new ConstructorObject();
+  const object: T = new ConstructorObject();
 
-  for (const key in object) {
-    _object[key] = replaces
-      ? replaces[key] ?? rolsterClone(object[key], caches, {})
-      : rolsterClone(object[key], caches, {});
+  for (const key in value) {
+    if (_cloneStrategy(value, key)) {
+      object[key] = overrides
+        ? overrides[key] ?? _clone(value[key], caches, {})
+        : _clone(value[key], caches, {});
+    }
   }
 
-  return _object;
+  return object;
 }
 
-let _clone: Clonable = rolsterClone;
-
-export function setClonable(clone: Clonable): void {
-  _clone = clone;
+export function setCloneStrategy(cloneStrategy: CloneStrategy): void {
+  _cloneStrategy = cloneStrategy;
 }
 
-export function itIsDefined<T = any>(object: T): object is NonNullable<T> {
-  return typeof object !== 'undefined' && object !== null;
+export function itIsDefined<T = any>(value: T): value is NonNullable<T> {
+  return typeof value !== 'undefined' && value !== null;
 }
 
-export function itIsUndefined(object: any): object is undefined | null {
-  return !itIsDefined(object);
+export function itIsUndefined(value: any): value is undefined | null {
+  return !itIsDefined(value);
 }
 
 export function parseBoolean(value: any): boolean {
   return !(
     itIsUndefined(value) ||
     value === false ||
-    FALSY_VALUE.includes(value)
+    falsyValue.includes(value)
   );
 }
 
@@ -91,32 +87,40 @@ export function evalValueOrFunction<T>(value: ValueOrFunction<T>): T {
   return typeof value === 'function' ? (value as Function)() : value;
 }
 
-export function clone<O>(object: O, replaces?: ReplaceClone<O>): O {
-  return _clone(object, [], replaces);
+export function clone<T>(value: T, overrides?: CloneOverride<T>): T {
+  return _clone(value, [], overrides);
 }
 
-export function freeze<O>(object: O): Readonly<O> {
-  for (const key in object) {
-    const value = object[key];
+export function freeze<T>(value: T): Readonly<T> {
+  if (typeof value !== 'object') {
+    return value;
+  }
 
-    if (typeof value === 'object' && !Object.isFrozen(value)) {
-      freeze(value);
+  for (const key in value) {
+    const item = value[key];
+
+    if (typeof item === 'object' && !Object.isFrozen(item)) {
+      freeze(item);
     }
   }
 
-  return Object.freeze(object);
+  return Object.freeze(value);
 }
 
-export function seal<O>(object: O): Readonly<O> {
-  for (const key in object) {
-    const value = object[key];
+export function seal<O>(value: O): Readonly<O> {
+  if (typeof value !== 'object') {
+    return value;
+  }
 
-    if (typeof value === 'object' && !Object.isSealed(value)) {
-      seal(value);
+  for (const key in value) {
+    const item = value[key];
+
+    if (typeof item === 'object' && !Object.isSealed(item)) {
+      seal(item);
     }
   }
 
-  return Object.seal(object);
+  return Object.seal(value);
 }
 
 export function callback<T = any>(
@@ -126,7 +130,7 @@ export function callback<T = any>(
   return typeof call !== 'function' ? undefined : call.apply(call, args);
 }
 
-function normalizeValue(value: any): void {
+function normalizeValue(value: any): any {
   return typeof value === 'object'
     ? Array.isArray(value)
       ? value.map((value) => normalizeValue(value))
@@ -154,8 +158,8 @@ export function base64ToBlob(data64: string, mimeType: string): Blob {
   const byteCharacters = window.atob(result64);
   const byteArrays = [];
 
-  for (let offset = 0; offset < byteCharacters.length; offset += SLICE_SIZE) {
-    const slice = byteCharacters.slice(offset, offset + SLICE_SIZE);
+  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+    const slice = byteCharacters.slice(offset, offset + sliceSize);
     const byteNumbers = new Array(slice.length);
 
     for (let i = 0; i < slice.length; i++) {
@@ -167,4 +171,16 @@ export function base64ToBlob(data64: string, mimeType: string): Blob {
   }
 
   return new Blob(byteArrays, { type: mimeType });
+}
+
+export function ceilDecimals(number: number, size: number): number {
+  const factor = Math.pow(10, size);
+
+  return Math.ceil(number * factor) / factor;
+}
+
+export function floorDecimals(number: number, size: number): number {
+  const factor = Math.pow(10, size);
+
+  return Math.floor(number * factor) / factor;
 }

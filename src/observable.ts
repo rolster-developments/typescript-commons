@@ -1,36 +1,34 @@
-import { clone, freeze } from './helpers';
+import { freeze } from './helpers';
 
-export type Observer<T = any> = (value: T) => void;
+export type Observer<T = any> = (value: Readonly<T>) => void;
 
 export interface Observable<T = any> {
   close: () => void;
   listen(observer: Observer<T>): Unsubscription;
-  next(state: T): void;
-  readonly state: T;
+  next(value: T): void;
+  readonly value: T;
   subscribe(observer: Observer<T>): Unsubscription;
 }
 
-class ObservableState<T = any> implements Observable<T> {
+class ManagerObservable<T = any> implements Observable<T> {
   private observers: Observer<T>[] = [];
 
   private isClosed = false;
 
-  private value: T;
+  private _value: Readonly<T>;
 
-  constructor(state: T) {
-    this.value = clone(state);
+  constructor(value: T) {
+    this._value = freeze(value);
   }
 
-  public get state(): Readonly<T> {
-    return typeof this.value === 'object'
-      ? freeze(clone(this.value))
-      : this.value;
+  public get value(): Readonly<T> {
+    return this._value;
   }
 
   public subscribe(observer: Observer<T>): Unsubscription {
     this.observers.push(observer);
 
-    observer(clone(this.value));
+    observer(this._value);
 
     return this.unsubscriptor(observer);
   }
@@ -41,12 +39,12 @@ class ObservableState<T = any> implements Observable<T> {
     return this.unsubscriptor(observer);
   }
 
-  public next(state: T): void {
+  public next(value: T): void {
     if (!this.isClosed) {
-      this.value = clone(state);
+      this._value = freeze(value);
 
       this.observers.forEach((observer) => {
-        observer(state);
+        observer(this._value);
       });
     }
   }
@@ -66,7 +64,7 @@ class ObservableState<T = any> implements Observable<T> {
 }
 
 export function observable<T>(): Observable<T | undefined>;
-export function observable<T>(state: T): Observable<T>;
-export function observable<T>(state?: T): Observable<T | undefined> {
-  return new ObservableState(state);
+export function observable<T>(value: T): Observable<T>;
+export function observable<T>(value?: T): Observable<T | undefined> {
+  return new ManagerObservable(value);
 }

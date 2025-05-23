@@ -108,7 +108,8 @@ export function zipPromise<T extends any[]>(
 type SecurePromiseCallback<T = any> = () => Promise<T>;
 
 export interface SecurePromise<T = any> {
-  itIsInstanced(): boolean;
+  isInstanced(): boolean;
+  isRequesting(): boolean;
   refresh(): Promise<T>;
   reset(): void;
   resolve(): Promise<T>;
@@ -119,24 +120,35 @@ export function securePromise<T = any>(
   catchError?: (err: any) => Undefined<T>
 ): SecurePromise<T> {
   let promise$: Undefined<Promise<T>> = undefined;
+  let _isRequesting = false;
 
-  function itIsInstanced(): boolean {
+  function isInstanced(): boolean {
     return itIsDefined(promise$);
+  }
+
+  function isRequesting(): boolean {
+    return _isRequesting;
   }
 
   function resolve(): Promise<T> {
     if (!promise$) {
-      promise$ = callback().catch((err) => {
-        const errorValue = catchError && catchError(err);
+      _isRequesting = true;
 
-        reset();
+      promise$ = callback()
+        .catch((err) => {
+          const errorValue = catchError && catchError(err);
 
-        if (errorValue) {
-          return errorValue;
-        }
+          reset();
 
-        throw err;
-      });
+          if (errorValue) {
+            return errorValue;
+          }
+
+          throw err;
+        })
+        .finally(() => {
+          _isRequesting = false;
+        });
     }
 
     return promise$;
@@ -152,5 +164,11 @@ export function securePromise<T = any>(
     return resolve();
   }
 
-  return { itIsInstanced, refresh, reset, resolve };
+  return {
+    isInstanced,
+    isRequesting,
+    refresh,
+    reset,
+    resolve
+  };
 }

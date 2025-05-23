@@ -71,13 +71,13 @@ interface StatusSubscription<T, E = any> {
 }
 
 export function rxPromise<T>(promise: Promise<T>): SealedSubscription<T> {
-  const rxObservable = observable(PromiseSealed.loading());
+  const observable$ = observable(PromiseSealed.loading());
 
   const firstTime = Date.now();
 
   promise
     .then((response) => {
-      rxObservable.next(
+      observable$.next(
         PromiseSealed.success({
           response,
           responseTime: Date.now() - firstTime
@@ -85,12 +85,12 @@ export function rxPromise<T>(promise: Promise<T>): SealedSubscription<T> {
       );
     })
     .catch((error) => {
-      rxObservable.next(PromiseSealed.failure(error));
+      observable$.next(PromiseSealed.failure(error));
     });
 
   return {
     subscribe: (observer) => {
-      return rxObservable.subscribe(observer);
+      return observable$.subscribe(observer);
     }
   };
 }

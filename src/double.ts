@@ -1,6 +1,6 @@
 type DoubleProps = {
-  decimals: number[];
-  exp: number;
+  base: number;
+  numbers: number[];
   signed: number;
 };
 
@@ -13,33 +13,36 @@ type DividerValue = {
   places?: boolean;
 };
 
+const SAFE_INTEGER_MAX = 9007199254740991;
 const DOUBLE_REGEX = /^(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i;
 const BASE = 1e5;
-const LOG_BASE = 5;
-const EXPONENT_NEGATIVE = -5;
-const EXPONENT_POSITIVE = 15;
-const MAX_DIGITS = 1e9;
-const MAX_SAFE_INTEGER = 9007199254740991;
-const MAX_EXPONENT = Math.floor(MAX_SAFE_INTEGER / LOG_BASE);
-const CHAR_NEGATIVE = 45;
-const CHAR_ZERO = 48;
-const DOUBLE_ZERO_PROPS = { decimals: [0], exp: 0, signed: 0 };
+const BASE_LOG = 5;
+const BASE_NEGATIVE = -5;
+const BASE_POSITIVE = 15;
+const BASE_MAX = Math.floor(SAFE_INTEGER_MAX / BASE_LOG);
+const DIGITS_MAX = 1e9;
+const NEGATIVE_CHAR = 45;
+const ZERO_CHAR = 48;
+const ZERO_PROPS: DoubleProps = { numbers: [0], base: 0, signed: 0 };
 const PRECISION = 20;
 const ROUNDING = 4;
-const DEFAULT_FIXED = 2;
+const FIXED_DEFAULT = 2;
 const SIGNED_POSITIVE = 1;
+const SIGNED_NEUTRO = 0;
 const SIGNED_NEGATIVE = -1;
 
 export class Double {
-  public readonly decimals;
-  public readonly exp;
+  public readonly numbers;
+
+  public readonly base;
+
   public readonly signed;
 
   protected constructor(value: DoubleValue) {
-    const { decimals, exp, signed } = createDoublePropsFromValue(value);
+    const { numbers, base, signed } = createDoublePropsFromValue(value);
 
-    this.decimals = decimals;
-    this.exp = exp;
+    this.numbers = numbers;
+    this.base = base;
     this.signed = signed;
   }
 
@@ -48,7 +51,7 @@ export class Double {
   }
 
   public get fixed(): number {
-    return +this.toFixed();
+    return +this.fix();
   }
 
   public plus(value: DoubleValue): Double {
@@ -111,16 +114,16 @@ export class Double {
   public equals(value: DoubleValue): boolean {
     const double = createDouble(value);
 
-    if (this.signed !== double.signed || this.exp !== double.exp) {
+    if (this.signed !== double.signed || this.base !== double.base) {
       return false;
     }
 
-    if (this.decimals.length !== double.decimals.length) {
+    if (this.numbers.length !== double.numbers.length) {
       return false;
     }
 
-    for (let i = 0; i < this.decimals.length; ++i) {
-      if (this.decimals[i] !== double.decimals[i]) {
+    for (let i = 0; i < this.numbers.length; ++i) {
+      if (this.numbers[i] !== double.numbers[i]) {
         return false;
       }
     }
@@ -146,62 +149,121 @@ export class Double {
 
   public abs(): Double {
     return new Double({
-      decimals: this.decimals,
-      exp: this.exp,
+      numbers: this.numbers,
+      base: this.base,
       signed: SIGNED_POSITIVE
     });
   }
 
   public negative(): Double {
     return new Double({
-      decimals: this.decimals,
-      exp: this.exp,
+      numbers: this.numbers,
+      base: this.base,
       signed: -this.signed
     });
   }
 
   public isNegative(): boolean {
-    return this.signed < 0;
+    return this.signed === SIGNED_NEGATIVE;
   }
 
   public isPositive(): boolean {
-    return this.signed > 0;
+    return this.signed === SIGNED_POSITIVE;
   }
 
   public isZero(): boolean {
-    return this.signed === 0;
+    return this.signed === SIGNED_NEUTRO;
   }
 
-  public toFixed(decimals = DEFAULT_FIXED, roundMode = ROUNDING): string {
-    checkInt32(decimals, 0, MAX_DIGITS);
+  public fix(numbers = FIXED_DEFAULT, roundMode = ROUNDING): string {
+    checkInt32(numbers, 0, DIGITS_MAX);
     checkInt32(roundMode, 0, 8);
 
-    const double = round(this, decimals + base10Exp(this) + 1, roundMode);
+    const double = round(this, numbers + base10Exp(this) + 1, roundMode);
+
     const str = decimaltoString(
       double.abs(),
       false,
-      decimals + base10Exp(double) + 1
+      numbers + base10Exp(double) + 1
     );
 
     return this.isNegative() && !this.isZero() ? `-${str}` : str;
   }
 
-  public roundCeil(): Double {
-    const decimals = this.decimals
-      .slice(0, this.exp + 1)
-      .map((value, index) => (index === this.exp ? value + 1 : value));
+  public roundCeil(decimals = 0): Double {
+    const position = this.base + 1;
+
+    if (this.numbers.length === position) {
+      return new Double({
+        numbers: this.numbers,
+        base: this.base,
+        signed: this.signed
+      });
+    }
+
+    if (decimals <= 0) {
+      const numbers = this.numbers.slice(0, position);
+
+      numbers[this.base] = this.numbers[this.base] + 1;
+
+      return new Double({
+        numbers,
+        base: this.base,
+        signed: this.signed
+      });
+    }
+
+    const base = Math.floor(decimals / BASE_LOG);
+    const size = decimals % BASE_LOG;
+
+    const decimalsPos = this.base + base;
+
+    const numbers = this.numbers.slice(0, decimalsPos + 1);
+
+    if (size > 0) {
+      const _number = this.numbers[decimalsPos + 1];
+
+      if (_number) {
+        const ceil = +String(_number).slice(0, size) + 1;
+        numbers.push(+String(ceil).padEnd(BASE_LOG, '0'));
+      }
+    } else {
+      numbers[decimalsPos] = this.numbers[decimalsPos] + 1;
+    }
 
     return new Double({
-      decimals,
-      exp: this.exp,
+      numbers,
+      base: this.base,
       signed: this.signed
     });
   }
 
-  public roundFloor(): Double {
+  public roundFloor(decimals = 0): Double {
+    if (decimals <= 0) {
+      return new Double({
+        numbers: this.numbers.slice(0, this.base + 1),
+        base: this.base,
+        signed: this.signed
+      });
+    }
+
+    const base = Math.floor(decimals / BASE_LOG);
+    const size = decimals % BASE_LOG;
+
+    const numbers = this.numbers.slice(0, this.base + base + 1);
+
+    if (size > 0) {
+      const _number = this.numbers[this.base + base + 1];
+
+      if (_number) {
+        const floor = String(_number).slice(0, size);
+        numbers.push(+floor.padEnd(BASE_LOG, '0'));
+      }
+    }
+
     return new Double({
-      decimals: this.decimals.slice(0, this.exp + 1),
-      exp: this.exp,
+      numbers,
+      base: this.base,
       signed: this.signed
     });
   }
@@ -212,8 +274,8 @@ export class Double {
 
   public props(): DoubleProps {
     return {
-      decimals: [...this.decimals],
-      exp: this.exp,
+      numbers: [...this.numbers],
+      base: this.base,
       signed: this.signed
     };
   }
@@ -227,37 +289,37 @@ export class Double {
   }
 
   public static zero(): Double {
-    return new Double(DOUBLE_ZERO_PROPS);
+    return new Double(ZERO_PROPS);
   }
 }
 
 const parseDouble = (signed: number, doubleStr: string): DoubleProps => {
-  let expStr = doubleStr.indexOf('.');
+  let numberStr = doubleStr.indexOf('.');
   let i = doubleStr.search(/e/i);
   let length = doubleStr.length;
 
-  if (expStr > -1) {
+  if (numberStr > -1) {
     doubleStr = doubleStr.replace('.', '');
   }
 
   if (i > 0) {
-    if (expStr < 0) {
-      expStr = i;
+    if (numberStr < 0) {
+      numberStr = i;
     }
 
-    expStr += +doubleStr.slice(i + 1);
+    numberStr += +doubleStr.slice(i + 1);
     doubleStr = doubleStr.substring(0, i);
-  } else if (expStr < 0) {
-    expStr = doubleStr.length;
+  } else if (numberStr < 0) {
+    numberStr = doubleStr.length;
   }
 
-  for (i = 0; doubleStr.charCodeAt(i) === CHAR_ZERO; ) {
+  for (i = 0; doubleStr.charCodeAt(i) === ZERO_CHAR; ) {
     ++i;
   }
 
   for (
     length = doubleStr.length;
-    doubleStr.charCodeAt(length - 1) === CHAR_ZERO;
+    doubleStr.charCodeAt(length - 1) === ZERO_CHAR;
 
   ) {
     --length;
@@ -266,29 +328,29 @@ const parseDouble = (signed: number, doubleStr: string): DoubleProps => {
   doubleStr = doubleStr.slice(i, length);
 
   if (doubleStr) {
-    expStr = expStr - i - 1;
+    numberStr = numberStr - i - 1;
     length -= i;
 
-    let exp = Math.floor(expStr / LOG_BASE);
-    const decimals = [];
+    let base = Math.floor(numberStr / BASE_LOG);
+    const numbers = [];
 
-    i = (expStr + 1) % LOG_BASE;
+    i = (numberStr + 1) % BASE_LOG;
 
-    if (expStr < 0) {
-      i += LOG_BASE;
+    if (numberStr < 0) {
+      i += BASE_LOG;
     }
 
     if (i < length) {
       if (i) {
-        decimals.push(+doubleStr.slice(0, i));
+        numbers.push(+doubleStr.slice(0, i));
       }
 
-      for (length -= LOG_BASE; i < length; ) {
-        decimals.push(+doubleStr.slice(i, (i += LOG_BASE)));
+      for (length -= BASE_LOG; i < length; ) {
+        numbers.push(+doubleStr.slice(i, (i += BASE_LOG)));
       }
 
       doubleStr = doubleStr.slice(i);
-      i = LOG_BASE - doubleStr.length;
+      i = BASE_LOG - doubleStr.length;
     } else {
       i -= length;
     }
@@ -297,15 +359,15 @@ const parseDouble = (signed: number, doubleStr: string): DoubleProps => {
       doubleStr += '0';
     }
 
-    decimals.push(+doubleStr);
+    numbers.push(+doubleStr);
 
-    if (exp > MAX_EXPONENT || exp < -MAX_EXPONENT) {
-      throw Error('[DecimalError] Exponent out of range: ' + expStr);
+    if (base > BASE_MAX || base < -BASE_MAX) {
+      throw Error('[DecimalError] Exponent out of range: ' + numberStr);
     }
 
-    return { decimals, exp, signed };
+    return { numbers, base, signed };
   } else {
-    return DOUBLE_ZERO_PROPS;
+    return ZERO_PROPS;
   }
 };
 
@@ -319,7 +381,7 @@ const createDoubleFromNumber = (value: number): DoubleProps => {
   }
 
   if (value === 0) {
-    return DOUBLE_ZERO_PROPS;
+    return ZERO_PROPS;
   }
 
   let signed = SIGNED_POSITIVE;
@@ -351,7 +413,7 @@ const createDoublePropsFromValue = (value: DoubleValue): DoubleProps => {
 const createDoubleFromString = (value: string): DoubleProps => {
   let signed = SIGNED_POSITIVE;
 
-  if (value.charCodeAt(0) === CHAR_NEGATIVE) {
+  if (value.charCodeAt(0) === NEGATIVE_CHAR) {
     value = value.slice(1);
     signed = SIGNED_NEGATIVE;
   }
@@ -369,75 +431,75 @@ const plus = (double1: Double, double2: Double): Double => {
   }
 
   let carry = 0;
-  let decimalsTemp;
+  let numbersTemp;
   let length;
 
-  let decimals1 = [...double1.decimals].slice();
-  let decimals2 = [...double2.decimals];
+  let numbers1 = [...double1.numbers].slice();
+  let numbers2 = [...double2.numbers];
 
-  let exp1 = double1.exp;
-  let exp2 = double2.exp;
-  let expDiff = exp1 - exp2;
+  let base1 = double1.base;
+  let base2 = double2.base;
+  let baseDiff = base1 - base2;
 
-  if (expDiff) {
-    if (expDiff < 0) {
-      decimalsTemp = decimals1;
-      expDiff = -expDiff;
-      length = decimals2.length;
+  if (baseDiff) {
+    if (baseDiff < 0) {
+      numbersTemp = numbers1;
+      baseDiff = -baseDiff;
+      length = numbers2.length;
     } else {
-      decimalsTemp = decimals2;
-      exp2 = exp1;
-      length = decimals1.length;
+      numbersTemp = numbers2;
+      base2 = base1;
+      length = numbers1.length;
     }
 
-    exp1 = Math.ceil(PRECISION / LOG_BASE);
-    length = exp1 > length ? exp1 + 1 : length + 1;
+    base1 = Math.ceil(PRECISION / BASE_LOG);
+    length = base1 > length ? base1 + 1 : length + 1;
 
-    if (expDiff > length) {
-      expDiff = length;
-      decimalsTemp.length = 1;
+    if (baseDiff > length) {
+      baseDiff = length;
+      numbersTemp.length = 1;
     }
 
-    decimalsTemp.reverse();
+    numbersTemp.reverse();
 
-    for (; expDiff--; ) {
-      decimalsTemp.push(0);
+    for (; baseDiff--; ) {
+      numbersTemp.push(0);
     }
 
-    decimalsTemp.reverse();
+    numbersTemp.reverse();
   }
 
-  length = decimals1.length;
-  expDiff = decimals2.length;
+  length = numbers1.length;
+  baseDiff = numbers2.length;
 
-  if (length - expDiff < 0) {
-    expDiff = length;
-    decimalsTemp = decimals2;
-    decimals2 = decimals1;
-    decimals1 = decimalsTemp;
+  if (length - baseDiff < 0) {
+    baseDiff = length;
+    numbersTemp = numbers2;
+    numbers2 = numbers1;
+    numbers1 = numbersTemp;
   }
 
-  for (; expDiff; ) {
+  for (; baseDiff; ) {
     carry =
-      ((decimals1[--expDiff] =
-        decimals1[expDiff] + decimals2[expDiff] + carry) /
+      ((numbers1[--baseDiff] =
+        numbers1[baseDiff] + numbers2[baseDiff] + carry) /
         BASE) |
       0;
-    decimals1[expDiff] %= BASE;
+    numbers1[baseDiff] %= BASE;
   }
 
   if (carry) {
-    decimals1.unshift(carry);
-    ++exp2;
+    numbers1.unshift(carry);
+    ++base2;
   }
 
-  for (length = decimals1.length; decimals1[--length] == 0; ) {
-    decimals1.pop();
+  for (length = numbers1.length; numbers1[--length] == 0; ) {
+    numbers1.pop();
   }
 
   return Double.create({
-    decimals: decimals1,
-    exp: exp2,
+    numbers: numbers1,
+    base: base2,
     signed: double1.signed
   });
 };
@@ -447,46 +509,46 @@ const minus = (double1: Double, double2: Double): Double => {
     return Double.zero();
   }
 
-  let decimalsTemp, index1, index2, length, verify;
+  let numbersTemp, index1, index2, length, verify;
 
-  let decimals1 = [...double1.decimals].slice();
-  let decimals2 = [...double2.decimals];
+  let numbers1 = [...double1.numbers].slice();
+  let numbers2 = [...double2.numbers];
 
   let signed = double2.signed;
-  let exp1 = double1.exp;
-  let exp2 = double2.exp;
-  let expDiff = exp1 - exp2;
+  let base1 = double1.base;
+  let base2 = double2.base;
+  let baseDiff = base1 - base2;
 
-  if (expDiff) {
-    verify = expDiff < 0;
+  if (baseDiff) {
+    verify = baseDiff < 0;
 
     if (verify) {
-      decimalsTemp = decimals1;
-      expDiff = -expDiff;
-      length = decimals2.length;
+      numbersTemp = numbers1;
+      baseDiff = -baseDiff;
+      length = numbers2.length;
     } else {
-      decimalsTemp = decimals2;
-      exp2 = exp1;
-      length = decimals1.length;
+      numbersTemp = numbers2;
+      base2 = base1;
+      length = numbers1.length;
     }
 
-    index1 = Math.max(Math.ceil(PRECISION / LOG_BASE), length) + 2;
+    index1 = Math.max(Math.ceil(PRECISION / BASE_LOG), length) + 2;
 
-    if (expDiff > index1) {
-      expDiff = index1;
-      decimalsTemp.length = 1;
+    if (baseDiff > index1) {
+      baseDiff = index1;
+      numbersTemp.length = 1;
     }
 
-    decimalsTemp.reverse();
+    numbersTemp.reverse();
 
-    for (index1 = expDiff; index1--; ) {
-      decimalsTemp.push(0);
+    for (index1 = baseDiff; index1--; ) {
+      numbersTemp.push(0);
     }
 
-    decimalsTemp.reverse();
+    numbersTemp.reverse();
   } else {
-    length = decimals2.length;
-    index1 = decimals1.length;
+    length = numbers2.length;
+    index1 = numbers1.length;
     verify = index1 < length;
 
     if (verify) {
@@ -494,57 +556,57 @@ const minus = (double1: Double, double2: Double): Double => {
     }
 
     for (index1 = 0; index1 < length; index1++) {
-      if (decimals1[index1] != decimals2[index1]) {
-        verify = decimals1[index1] < decimals2[index1];
+      if (numbers1[index1] != numbers2[index1]) {
+        verify = numbers1[index1] < numbers2[index1];
         break;
       }
     }
 
-    expDiff = 0;
+    baseDiff = 0;
   }
 
   if (verify) {
-    decimalsTemp = decimals1;
-    decimals1 = decimals2;
-    decimals2 = decimalsTemp;
+    numbersTemp = numbers1;
+    numbers1 = numbers2;
+    numbers2 = numbersTemp;
 
     if (signed != 0) {
       signed = -signed;
     }
   }
 
-  length = decimals1.length;
+  length = numbers1.length;
 
-  for (index1 = decimals2.length - length; index1 > 0; --index1) {
-    decimals1[length++] = 0;
+  for (index1 = numbers2.length - length; index1 > 0; --index1) {
+    numbers1[length++] = 0;
   }
 
-  for (index1 = decimals2.length; index1 > expDiff; ) {
-    if (decimals1[--index1] < decimals2[index1]) {
-      for (index2 = index1; index2 && decimals1[--index2] === 0; ) {
-        decimals1[index2] = BASE - 1;
+  for (index1 = numbers2.length; index1 > baseDiff; ) {
+    if (numbers1[--index1] < numbers2[index1]) {
+      for (index2 = index1; index2 && numbers1[--index2] === 0; ) {
+        numbers1[index2] = BASE - 1;
       }
 
-      --decimals1[index2];
-      decimals1[index1] += BASE;
+      --numbers1[index2];
+      numbers1[index1] += BASE;
     }
 
-    decimals1[index1] -= decimals2[index1];
+    numbers1[index1] -= numbers2[index1];
   }
 
-  for (; decimals1[--length] === 0; ) {
-    decimals1.pop();
+  for (; numbers1[--length] === 0; ) {
+    numbers1.pop();
   }
 
-  for (; decimals1[0] === 0; decimals1.shift()) {
-    --exp2;
+  for (; numbers1[0] === 0; numbers1.shift()) {
+    --base2;
   }
 
-  if (!decimals1[0]) {
+  if (!numbers1[0]) {
     return Double.zero();
   }
 
-  return Double.create({ decimals: decimals1, exp: exp2, signed });
+  return Double.create({ numbers: numbers1, base: base2, signed });
 };
 
 const multiply = (double1: Double, double2: Double): Double => {
@@ -555,27 +617,27 @@ const multiply = (double1: Double, double2: Double): Double => {
   const signed = double1.signed * double2.signed;
 
   let index1, lengthTemp;
-  let exp = double1.exp + double2.exp;
-  let decimals1 = [...double1.decimals];
-  let decimals2 = [...double2.decimals];
-  let decimalsTemp = [];
-  let length1 = decimals1.length;
-  let length2 = decimals2.length;
+  let base = double1.base + double2.base;
+  let numbers1 = [...double1.numbers];
+  let numbers2 = [...double2.numbers];
+  let numbersTemp = [];
+  let length1 = numbers1.length;
+  let length2 = numbers2.length;
 
   if (length1 < length2) {
-    decimalsTemp = decimals1;
-    decimals1 = decimals2;
-    decimals2 = decimalsTemp;
+    numbersTemp = numbers1;
+    numbers1 = numbers2;
+    numbers2 = numbersTemp;
     lengthTemp = length1;
     length1 = length2;
     length2 = lengthTemp;
   }
 
-  decimalsTemp = [];
+  numbersTemp = [];
   lengthTemp = length1 + length2;
 
   for (index1 = lengthTemp; index1--; ) {
-    decimalsTemp.push(0);
+    numbersTemp.push(0);
   }
 
   let carry, index2;
@@ -585,27 +647,27 @@ const multiply = (double1: Double, double2: Double): Double => {
 
     for (index2 = length1 + index1; index2 > index1; ) {
       const th: number =
-        decimalsTemp[index2] +
-        decimals2[index1] * decimals1[index2 - index1 - 1] +
+        numbersTemp[index2] +
+        numbers2[index1] * numbers1[index2 - index1 - 1] +
         carry;
 
-      decimalsTemp[index2--] = th % BASE | 0;
+      numbersTemp[index2--] = th % BASE | 0;
 
       carry = (th / BASE) | 0;
     }
 
-    decimalsTemp[index2] = (decimalsTemp[index2] + carry) % BASE | 0;
+    numbersTemp[index2] = (numbersTemp[index2] + carry) % BASE | 0;
   }
 
-  for (; !decimalsTemp[--lengthTemp]; ) decimalsTemp.pop();
+  for (; !numbersTemp[--lengthTemp]; ) numbersTemp.pop();
 
   if (carry) {
-    ++exp;
+    ++base;
   } else {
-    decimalsTemp.shift();
+    numbersTemp.shift();
   }
 
-  return Double.create({ decimals: decimalsTemp, exp: exp, signed });
+  return Double.create({ numbers: numbersTemp, base: base, signed });
 };
 
 const divide = ({
@@ -626,20 +688,20 @@ const divide = ({
     double1.signed == double2.signed ? SIGNED_POSITIVE : SIGNED_NEGATIVE;
 
   let index1, index2, precTemp;
-  let decimals1 = [...double1.decimals];
-  let decimals2 = [...double2.decimals];
-  let decimals: number[] = [];
+  let numbers1 = [...double1.numbers];
+  let numbers2 = [...double2.numbers];
+  let numbers: number[] = [];
 
-  let length1 = double1.decimals.length;
-  let length2 = double2.decimals.length;
-  let exp = double1.exp - double2.exp;
+  let length1 = double1.numbers.length;
+  let length2 = double2.numbers.length;
+  let base = double1.base - double2.base;
 
-  for (index1 = 0; decimals2[index1] == (decimals1[index1] || 0); ) {
+  for (index1 = 0; numbers2[index1] == (numbers1[index1] || 0); ) {
     ++index1;
   }
 
-  if (decimals2[index1] > (decimals1[index1] || 0)) {
-    --exp;
+  if (numbers2[index1] > (numbers1[index1] || 0)) {
+    --base;
   }
 
   if (!precision) {
@@ -654,50 +716,50 @@ const divide = ({
     return Double.zero();
   }
 
-  precTemp = (precTemp / LOG_BASE + 2) | 0;
+  precTemp = (precTemp / BASE_LOG + 2) | 0;
   index1 = 0;
 
   if (length2 == 1) {
-    const first2 = decimals2[0];
+    const first2 = numbers2[0];
     index2 = 0;
     precTemp++;
 
     for (; (index1 < length1 || index2) && precTemp--; index1++) {
-      const size: number = index2 * BASE + (decimals1[index1] || 0);
+      const size: number = index2 * BASE + (numbers1[index1] || 0);
 
-      decimals[index1] = (size / first2) | 0;
+      numbers[index1] = (size / first2) | 0;
       index2 = size % first2 | 0;
     }
   } else {
-    index2 = (BASE / (decimals2[0] + 1)) | 0;
+    index2 = (BASE / (numbers2[0] + 1)) | 0;
 
     if (index2 > 1) {
-      decimals2 = multiplyInteger(decimals2, index2);
-      decimals1 = multiplyInteger(decimals1, index2);
-      length2 = decimals2.length;
-      length1 = decimals1.length;
+      numbers2 = multiplyInteger(numbers2, index2);
+      numbers1 = multiplyInteger(numbers1, index2);
+      length2 = numbers2.length;
+      length1 = numbers1.length;
     }
 
     let lengthTemp = length2;
-    let redimDecimals = decimals1.slice(0, length2);
+    let redimDecimals = numbers1.slice(0, length2);
     let redimLength = redimDecimals.length;
 
     for (; redimLength < length2; ) {
       redimDecimals[redimLength++] = 0;
     }
 
-    let resetDecimals = decimals2.slice();
+    let resetDecimals = numbers2.slice();
     resetDecimals.unshift(0);
-    let first2 = decimals2[0];
+    let first2 = numbers2[0];
 
-    if (double2.decimals[1] >= BASE / 2) {
+    if (double2.numbers[1] >= BASE / 2) {
       ++first2;
     }
 
     do {
       index2 = 0;
       let result = compare(
-        double2.decimals,
+        double2.numbers,
         redimDecimals,
         length2,
         redimLength
@@ -719,7 +781,7 @@ const divide = ({
             index2 = BASE - 1;
           }
 
-          multuply2 = multiplyInteger(decimals2, index2);
+          multuply2 = multiplyInteger(numbers2, index2);
           lengthMultiply = multuply2.length;
           redimLength = redimDecimals.length;
 
@@ -735,13 +797,13 @@ const divide = ({
 
             subtract(
               multuply2,
-              length2 < lengthMultiply ? resetDecimals : decimals2,
+              length2 < lengthMultiply ? resetDecimals : numbers2,
               lengthMultiply
             );
           }
         } else {
           if (index2 == 0) result = index2 = 1;
-          multuply2 = decimals2.slice();
+          multuply2 = numbers2.slice();
         }
 
         lengthMultiply = multuply2.length;
@@ -754,13 +816,13 @@ const divide = ({
 
         if (result == -1) {
           redimLength = redimDecimals.length;
-          result = compare(decimals2, redimDecimals, length2, redimLength);
+          result = compare(numbers2, redimDecimals, length2, redimLength);
 
           if (result < 1) {
             index2++;
             subtract(
               redimDecimals,
-              length2 < redimLength ? resetDecimals : decimals2,
+              length2 < redimLength ? resetDecimals : numbers2,
               redimLength
             );
           }
@@ -772,12 +834,12 @@ const divide = ({
         redimDecimals = [0];
       }
 
-      decimals[index1++] = index2;
+      numbers[index1++] = index2;
 
       if (result && redimDecimals[0]) {
-        redimDecimals[redimLength++] = decimals1[lengthTemp] || 0;
+        redimDecimals[redimLength++] = numbers1[lengthTemp] || 0;
       } else {
-        redimDecimals = [decimals1[lengthTemp]];
+        redimDecimals = [numbers1[lengthTemp]];
         redimLength = 1;
       }
     } while (
@@ -786,33 +848,33 @@ const divide = ({
     );
   }
 
-  if (!decimals[0]) {
-    decimals.shift();
+  if (!numbers[0]) {
+    numbers.shift();
   }
 
-  const double = Double.create({ decimals, exp, signed });
+  const double = Double.create({ numbers, base: base, signed });
 
   const precisionDef = places ? precision + base10Exp(double) + 1 : precision;
 
   return round(double, precisionDef);
 };
 
-const multiplyInteger = (decimals: number[], size: number): number[] => {
-  let i = decimals.length;
+const multiplyInteger = (numbers: number[], size: number): number[] => {
+  let i = numbers.length;
   let carry = 0;
   let temp;
 
-  for (decimals = decimals.slice(); i--; ) {
-    temp = decimals[i] * size + carry;
-    decimals[i] = temp % BASE | 0;
+  for (numbers = numbers.slice(); i--; ) {
+    temp = numbers[i] * size + carry;
+    numbers[i] = temp % BASE | 0;
     carry = (temp / BASE) | 0;
   }
 
   if (carry) {
-    decimals.unshift(carry);
+    numbers.unshift(carry);
   }
 
-  return decimals;
+  return numbers;
 };
 
 const compareTo = (number1: Double, number2: Double): number => {
@@ -820,18 +882,18 @@ const compareTo = (number1: Double, number2: Double): number => {
     return number1.signed || -number2.signed;
   }
 
-  if (number1.exp !== number2.exp) {
-    return number1.exp > number2.exp !== number1.signed < 0 ? 1 : -1;
+  if (number1.base !== number2.base) {
+    return number1.base > number2.base !== number1.signed < 0 ? 1 : -1;
   }
 
-  const decimals1 = number1.decimals;
-  const decimals2 = number2.decimals;
-  const length1 = decimals1.length;
-  const length2 = decimals2.length;
+  const numbers1 = number1.numbers;
+  const numbers2 = number2.numbers;
+  const length1 = numbers1.length;
+  const length2 = numbers2.length;
 
   for (let i = 0, j = length1 < length2 ? length1 : length2; i < j; ++i) {
-    if (decimals1[i] !== decimals2[i]) {
-      return decimals1[i] > decimals2[i] !== number1.signed < 0 ? 1 : -1;
+    if (numbers1[i] !== numbers2[i]) {
+      return numbers1[i] > numbers2[i] !== number1.signed < 0 ? 1 : -1;
     }
   }
 
@@ -843,8 +905,8 @@ const compareTo = (number1: Double, number2: Double): number => {
 };
 
 const compare = (
-  decimals1: number[],
-  decimals2: number[],
+  numbers1: number[],
+  numbers2: number[],
   length1: number,
   length2: number
 ): number => {
@@ -856,8 +918,8 @@ const compare = (
   let i = 0;
 
   for (; i < length1; i++) {
-    if (decimals1[i] != decimals2[i]) {
-      result = decimals1[i] > decimals2[i] ? 1 : -1;
+    if (numbers1[i] != numbers2[i]) {
+      result = numbers1[i] > numbers2[i] ? 1 : -1;
       break;
     }
   }
@@ -882,36 +944,36 @@ const subtract = (
 };
 
 const round = (double: Double, precisionDef: number, rm?: any): Double => {
-  const decimals = [...double.decimals];
+  const numbers = [...double.numbers];
   let numberDigits = 1;
 
-  for (let first = decimals[0]; first >= 10; first /= 10) {
+  for (let first = numbers[0]; first >= 10; first /= 10) {
     numberDigits++;
   }
 
   let length = precisionDef - numberDigits;
   let presicion;
-  let roundNumber = decimals[0];
+  let roundNumber = numbers[0];
   let index = 0;
 
   if (length < 0) {
     presicion = precisionDef;
-    length += LOG_BASE;
+    length += BASE_LOG;
   } else {
-    index = Math.ceil((length + 1) / LOG_BASE);
+    index = Math.ceil((length + 1) / BASE_LOG);
 
-    if (index >= decimals.length) {
+    if (index >= numbers.length) {
       return double.clone();
     }
 
-    let word = (roundNumber = decimals[index]);
+    let word = (roundNumber = numbers[index]);
 
     for (numberDigits = 1; word >= 10; word /= 10) {
       numberDigits++;
     }
 
-    length %= LOG_BASE;
-    presicion = length - LOG_BASE + numberDigits;
+    length %= BASE_LOG;
+    presicion = length - BASE_LOG + numberDigits;
   }
 
   let doRound;
@@ -922,7 +984,7 @@ const round = (double: Double, precisionDef: number, rm?: any): Double => {
     let roundDigit = (roundNumber / pow) % 10 | 0;
 
     doRound =
-      precisionDef < 0 || decimals[index + 1] !== void 0 || roundNumber % pow;
+      precisionDef < 0 || numbers[index + 1] !== void 0 || roundNumber % pow;
 
     doRound =
       rm < 4
@@ -937,42 +999,47 @@ const round = (double: Double, precisionDef: number, rm?: any): Double => {
                   ? presicion > 0
                     ? roundNumber / Math.pow(10, numberDigits - presicion)
                     : 0
-                  : decimals[index - 1]) %
+                  : numbers[index - 1]) %
                   10 &
                   1) ||
               rm == (double.signed < 0 ? 8 : 7)));
   }
 
-  if (precisionDef < 1 || !decimals[0]) {
+  if (precisionDef < 1 || !numbers[0]) {
     if (doRound) {
-      const exp10 = base10Exp(double);
+      const base10 = base10Exp(double);
 
-      precisionDef = precisionDef - exp10 - 1;
+      precisionDef = precisionDef - base10 - 1;
 
       const value = Math.pow(
         10,
-        (LOG_BASE - (precisionDef % LOG_BASE)) % LOG_BASE
+        (BASE_LOG - (precisionDef % BASE_LOG)) % BASE_LOG
       );
-      const exp = Math.floor(-precisionDef / LOG_BASE) || 0;
 
-      return Double.create({ decimals: [value], exp, signed: double.signed });
+      const base = Math.floor(-precisionDef / BASE_LOG) || 0;
+
+      return Double.create({
+        numbers: [value],
+        base,
+        signed: double.signed
+      });
     } else {
       return Double.zero();
     }
   }
 
-  let size = Math.pow(10, LOG_BASE - length);
-  let exp = double.exp;
+  let size = Math.pow(10, BASE_LOG - length);
+  let base = double.base;
   let signed = double.signed;
 
   if (length == 0) {
-    decimals.length = index;
+    numbers.length = index;
     size = 1;
     index--;
   } else {
-    decimals.length = index + 1;
+    numbers.length = index + 1;
 
-    decimals[index] =
+    numbers[index] =
       presicion > 0
         ? ((roundNumber / Math.pow(10, numberDigits - presicion)) %
             Math.pow(10, presicion) |
@@ -984,34 +1051,34 @@ const round = (double: Double, precisionDef: number, rm?: any): Double => {
   if (doRound) {
     for (;;) {
       if (index == 0) {
-        if ((decimals[0] += size) == BASE) {
-          decimals[0] = 1;
-          ++exp;
+        if ((numbers[0] += size) == BASE) {
+          numbers[0] = 1;
+          ++base;
         }
 
         break;
       } else {
-        decimals[index] += size;
+        numbers[index] += size;
 
-        if (decimals[index] != BASE) {
+        if (numbers[index] != BASE) {
           break;
         }
 
-        decimals[index--] = 0;
+        numbers[index--] = 0;
         size = 1;
       }
     }
   }
 
-  for (length = decimals.length; decimals[--length] === 0; ) {
-    decimals.pop();
+  for (length = numbers.length; numbers[--length] === 0; ) {
+    numbers.pop();
   }
 
-  if (double.exp > MAX_EXPONENT || double.exp < -MAX_EXPONENT) {
+  if (double.base > BASE_MAX || double.base < -BASE_MAX) {
     throw Error('[DecimalError] Exponent out of range: ' + base10Exp(double));
   }
 
-  return Double.create({ decimals, exp, signed });
+  return Double.create({ numbers, base: base, signed });
 };
 
 const decimaltoString = (
@@ -1019,9 +1086,9 @@ const decimaltoString = (
   isExponent: boolean,
   sd?: number
 ): string => {
-  let digits = digitsToString(double.decimals);
+  let digits = digitsToString(double.numbers);
   let length = digits.length;
-  let exp = base10Exp(double);
+  let base = base10Exp(double);
   let countZero;
 
   if (isExponent) {
@@ -1032,26 +1099,26 @@ const decimaltoString = (
       digits = digits.charAt(0) + '.' + digits.slice(1);
     }
 
-    digits = digits + (exp < 0 ? 'e' : 'e+') + exp;
-  } else if (exp < 0) {
-    digits = '0.' + padZeroString(-exp - 1) + digits;
+    digits = digits + (base < 0 ? 'e' : 'e+') + base;
+  } else if (base < 0) {
+    digits = '0.' + padZeroString(-base - 1) + digits;
 
     if (sd && (countZero = sd - length) > 0) {
       digits += padZeroString(countZero);
     }
-  } else if (exp >= length) {
-    digits += padZeroString(exp + 1 - length);
+  } else if (base >= length) {
+    digits += padZeroString(base + 1 - length);
 
-    if (sd && (countZero = sd - exp - 1) > 0) {
+    if (sd && (countZero = sd - base - 1) > 0) {
       digits = digits + '.' + padZeroString(countZero);
     }
   } else {
-    if ((countZero = exp + 1) < length) {
+    if ((countZero = base + 1) < length) {
       digits = digits.slice(0, countZero) + '.' + digits.slice(countZero);
     }
 
     if (sd && (countZero = sd - length) > 0) {
-      if (exp + 1 === length) {
+      if (base + 1 === length) {
         digits += '.';
       }
 
@@ -1063,24 +1130,24 @@ const decimaltoString = (
 };
 
 const isExponent = (exponent: number): boolean => {
-  return exponent <= EXPONENT_NEGATIVE || exponent >= EXPONENT_POSITIVE;
+  return exponent <= BASE_NEGATIVE || exponent >= BASE_POSITIVE;
 };
 
 const base10Exp = (decimal: Double): number => {
-  let exp = decimal.exp * LOG_BASE;
-  let first = decimal.decimals[0];
+  let base = decimal.base * BASE_LOG;
+  let first = decimal.numbers[0];
 
   for (; first >= 10; first /= 10) {
-    exp++;
+    base++;
   }
 
-  return exp;
+  return base;
 };
 
-const digitsToString = (decimals: number[]): string => {
-  let indexLastWord = decimals.length - 1;
+const digitsToString = (numbers: number[]): string => {
+  let indexLastWord = numbers.length - 1;
   let str = '';
-  let word = decimals[0];
+  let word = numbers[0];
 
   if (indexLastWord > 0) {
     let i = 1;
@@ -1088,8 +1155,8 @@ const digitsToString = (decimals: number[]): string => {
     str += word;
 
     for (; i < indexLastWord; i++) {
-      const numberString = decimals[i].toString();
-      countZero = LOG_BASE - numberString.length;
+      const numberString = numbers[i].toString();
+      countZero = BASE_LOG - numberString.length;
 
       if (countZero) {
         str += padZeroString(countZero);
@@ -1098,8 +1165,8 @@ const digitsToString = (decimals: number[]): string => {
       str += numberString;
     }
 
-    word = decimals[i];
-    countZero = LOG_BASE - word.toString().length;
+    word = numbers[i];
+    countZero = BASE_LOG - word.toString().length;
 
     if (countZero) {
       str += padZeroString(countZero);

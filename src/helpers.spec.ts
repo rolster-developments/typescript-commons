@@ -1,7 +1,9 @@
 import {
   callback,
+  ceilDecimals,
   clone,
   evalValueOrFunction,
+  floorDecimals,
   freeze,
   itIsDefined,
   itIsUndefined,
@@ -188,6 +190,18 @@ describe('Helpers', () => {
     expect(daniel1.isAdult).toBe(false);
   });
 
+  it('should execute test of "clone" with null successful', () => {
+    const data = { name: null };
+
+    expect(data).toBeDefined();
+    expect(data.name).toBeNull();
+
+    const data1 = clone(data);
+
+    expect(data1).toBeDefined();
+    expect(data1.name).toBeNull();
+  });
+
   it('should execute test of "freeze" successful', () => {
     const person = new Person('Daniel', 'Castillo');
 
@@ -237,5 +251,19 @@ describe('Helpers', () => {
       address: { city: 'Valledupar' },
       points: ['10', '20', '40']
     });
+  });
+
+  it('should execute test of "floorDecimals" successful', () => {
+    expect(floorDecimals(1.2345, 2)).toBe(1.23);
+    expect(floorDecimals(3.14159, 3)).toBe(3.141);
+    expect(floorDecimals(7.89, 1)).toBe(7.8);
+    expect(floorDecimals(5410.89, 0)).toBe(5410);
+  });
+
+  it('should execute test of "ceilDecimals" successful', () => {
+    expect(ceilDecimals(1.2345, 2)).toBe(1.24);
+    expect(ceilDecimals(3.14159, 3)).toBe(3.142);
+    expect(ceilDecimals(7.89, 1)).toBe(7.9);
+    expect(ceilDecimals(5410.89, 0)).toBe(5411);
   });
 });
