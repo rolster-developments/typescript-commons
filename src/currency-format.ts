@@ -1,6 +1,6 @@
 interface Currency {
   value: number;
-  decimals?: boolean;
+  decimals?: number;
   symbol?: string;
 }
 
@@ -24,8 +24,8 @@ export function currencyFormat(currency: Currency): string {
     result = `${integer.charAt(index)}${result}`;
   }
 
-  if (decimals && decimal) {
-    result = `${result},${decimal.slice(0, 2)}`;
+  if (!!decimals && decimal) {
+    result = `${result},${decimal.slice(0, decimals)}`;
   }
 
   if (value < 0) {

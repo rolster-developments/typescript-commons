@@ -14,26 +14,26 @@ describe('CurrencyFormat', () => {
   });
 
   it('should generate format only value and decimals successful', () => {
-    expect(currencyFormat({ value: 46097.66, decimals: true })).toBe(
+    expect(currencyFormat({ value: 46097.66, decimals: 2 })).toBe(
       '46.097,66'
     );
-    expect(currencyFormat({ value: 10.7, decimals: true })).toBe('10,7');
-    expect(currencyFormat({ value: 2351245.7, decimals: true })).toBe(
+    expect(currencyFormat({ value: 10.7, decimals: 2 })).toBe('10,7');
+    expect(currencyFormat({ value: 2351245.7, decimals: 2 })).toBe(
       '2.351.245,7'
     );
-    expect(currencyFormat({ value: 30.541, decimals: true })).toBe('30,54');
+    expect(currencyFormat({ value: 30.541, decimals: 2 })).toBe('30,54');
   });
 
   it('should generate format complet successful', () => {
     expect(
-      currencyFormat({ value: 10247.5, symbol: '$', decimals: true })
+      currencyFormat({ value: 10247.5, symbol: '$', decimals: 2 })
     ).toBe('$ 10.247,5');
     expect(
-      currencyFormat({ value: 243.06, symbol: 'USD', decimals: true })
+      currencyFormat({ value: 243.06, symbol: 'USD', decimals: 2 })
     ).toBe('USD 243,06');
     expect(
-      currencyFormat({ value: 5124.431, symbol: '€', decimals: true })
-    ).toBe('€ 5.124,43');
+      currencyFormat({ value: 5124.431, symbol: '€', decimals: 3 })
+    ).toBe('€ 5.124,431');
   });
 
   it('should generate format only negative value successful', () => {
