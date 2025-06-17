@@ -27,7 +27,8 @@ class Person {
 
   constructor(
     public readonly firstName: string,
-    lastName: string
+    lastName: string,
+    public readonly salary?: number
   ) {
     this.lastName = new LastName(lastName);
   }
@@ -174,13 +175,14 @@ describe('Helpers', () => {
     expect(katherin2.age).toBe(20);
     expect(katherin2.occupation).toBe('Instrumentadora');
 
-    const daniel = new Person('Daniel', 'Castillo');
+    const daniel = new Person('Daniel', 'Castillo', 5000);
     daniel.setAge(16);
 
     expect(daniel).toBeDefined();
     expect(daniel.fullName).toBe('Daniel Castillo');
     expect(daniel.age).toBe(16);
     expect(daniel.isAdult).toBe(false);
+    expect(daniel.salary).toBe(5000);
 
     const daniel1 = clone(daniel);
 
@@ -188,6 +190,10 @@ describe('Helpers', () => {
     expect(daniel1.fullName).toBe('Daniel Castillo');
     expect(daniel1.age).toBe(16);
     expect(daniel1.isAdult).toBe(false);
+    expect(daniel1.salary).toBe(5000);
+
+    const daniel2 = clone(daniel, { salary: undefined });
+    expect(daniel2.salary).toBeUndefined();
   });
 
   it('should execute test of "clone" with null successful', () => {

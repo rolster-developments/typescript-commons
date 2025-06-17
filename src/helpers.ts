@@ -43,12 +43,17 @@ function _clone<T>(
   }
 
   const object: T = new ConstructorObject();
+  const keys = Object.keys(overrides ?? {});
 
   for (const key in value) {
     if (_cloneStrategy(value, key)) {
-      object[key] = overrides
-        ? overrides[key] ?? _clone(value[key], caches, {})
-        : _clone(value[key], caches, {});
+      if (overrides) {
+        object[key] = keys.includes(key)
+          ? (overrides[key] as any)
+          : _clone(value[key], caches, {});
+      } else {
+        object[key] = _clone(value[key], caches, {});
+      }
     }
   }
 
