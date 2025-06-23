@@ -31,6 +31,31 @@ describe('Double', () => {
     expect(number3.signed).toBe(1);
   });
 
+  it('should operation minus successful', () => {
+    const number1 = Double.create(10);
+    const number2 = Double.create(500);
+    const zero = Double.create(0);
+
+    expect(zero.fixed).toBe(0);
+    expect(zero.minus(1000).fixed).toBe(-1000);
+    expect(number1.minus(1000).fixed).toBe(-990);
+    expect(number2.minus(175).fixed).toBe(325);
+  });
+
+  it('should operation divide successful', () => {
+    const number1 = Double.create(12.5);
+    const number2 = Double.create(100);
+    const zero = Double.create(0);
+
+    expect(zero.divide(1000).fixed).toBe(0);
+    expect(number2.divide(3).fixed).toBe(33.33);
+    expect(number2.divide(4).fixed).toBe(25);
+    expect(number2.divide(8).fixed).toBe(12.5);
+    expect(number1.divide(10).fixed).toBe(1.25);
+    expect(number2.divide(2.5).fixed).toBe(40);
+    expect(number2.divide(8.25).fixed).toBe(12.12);
+  });
+
   it('should round floor successful', () => {
     const double1 = Double.create(20551055546.75675562321);
 
