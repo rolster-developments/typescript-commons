@@ -1,14 +1,14 @@
 class QuequeElement<T> {
-  private nextElement?: QuequeElement<T>;
+  private element?: QuequeElement<T>;
 
   constructor(public readonly value: T) {}
 
   public set next(element: Undefined<QuequeElement<T>>) {
-    this.nextElement = element;
+    this.element = element;
   }
 
   public get next(): Undefined<QuequeElement<T>> {
-    return this.nextElement;
+    return this.element;
   }
 }
 
@@ -17,10 +17,10 @@ export class Queque<T> {
 
   private tail?: QuequeElement<T>;
 
-  private lengthValue = 0;
+  private _length = 0;
 
   public get length(): number {
-    return this.lengthValue;
+    return this._length;
   }
 
   public enqueue(value: T): void {
@@ -34,7 +34,7 @@ export class Queque<T> {
 
     this.tail = element;
 
-    this.lengthValue++;
+    this._length++;
   }
 
   public dequeue(): Undefined<T> {
@@ -42,19 +42,21 @@ export class Queque<T> {
       return undefined;
     }
 
-    const { next, value } = this.head;
+    const head = this.head;
 
-    this.head = next;
+    this.head = head.next;
 
-    this.lengthValue--;
+    this._length--;
 
-    return value;
+    return head.value;
   }
 
   public static fromArray<T>(collection: T[]): Queque<T> {
     const queque = new Queque<T>();
 
-    collection.forEach((element) => queque.enqueue(element));
+    collection.forEach((element) => {
+      queque.enqueue(element);
+    });
 
     return queque;
   }
