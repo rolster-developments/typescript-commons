@@ -5,9 +5,7 @@ interface Currency {
 }
 
 export function currencyFormat(currency: Currency): string {
-  const { value, decimals, symbol } = currency;
-
-  const [integer, decimal] = Math.abs(value).toString().split('.');
+  const [integer, decimal] = Math.abs(currency.value).toString().split('.');
 
   let result = '';
   let count = 0;
@@ -24,13 +22,13 @@ export function currencyFormat(currency: Currency): string {
     result = `${integer.charAt(index)}${result}`;
   }
 
-  if (!!decimals && decimal) {
-    result = `${result},${decimal.slice(0, decimals)}`;
+  if (!!currency.decimals && decimal) {
+    result = `${result},${decimal.slice(0, currency.decimals)}`;
   }
 
-  if (value < 0) {
+  if (currency.value < 0) {
     result = `-${result}`;
   }
 
-  return symbol ? `${symbol} ${result}` : result;
+  return currency.symbol ? `${currency.symbol} ${result}` : result;
 }

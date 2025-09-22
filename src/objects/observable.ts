@@ -1,4 +1,4 @@
-import { freeze } from './helpers';
+import { freeze } from '../helpers/general-helper';
 
 export type Observer<T = any> = (value: Readonly<T>) => void;
 

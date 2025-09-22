@@ -1,4 +1,4 @@
-import { itIsDefined } from './helpers';
+import { valueIsDefined } from '../helpers/general-helper';
 
 type EmptyFn<V> = () => V;
 
@@ -26,11 +26,11 @@ export abstract class Optional<T> {
   }
 
   public static build<T>(value?: Nulleable<T>): Optional<T> {
-    return itIsDefined(value) ? this.of(value) : this.empty();
+    return valueIsDefined(value) ? this.of(value) : this.empty();
   }
 
   public static of<T>(value: T): Optional<T> {
-    if (itIsDefined(value)) {
+    if (valueIsDefined(value)) {
       return new PresentOptional<T>(value);
     }
 
