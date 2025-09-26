@@ -46,12 +46,12 @@ export class Double {
     this.signed = signed;
   }
 
-  public get value(): number {
+  public get data(): number {
     return +this;
   }
 
   public get fixed(): number {
-    return +this.fix();
+    return +this.format();
   }
 
   public plus(value: DoubleValue): Double {
@@ -184,7 +184,7 @@ export class Double {
     return this.signed === SIGNED_NEUTRO;
   }
 
-  public fix(numbers = FIXED_DEFAULT, roundMode = ROUNDING): string {
+  public format(numbers = FIXED_DEFAULT, roundMode = ROUNDING): string {
     checkInt32(numbers, 0, DIGITS_MAX);
     checkInt32(roundMode, 0, 8);
 
