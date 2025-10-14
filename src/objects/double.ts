@@ -32,18 +32,18 @@ const SIGNED_NEUTRO = 0;
 const SIGNED_NEGATIVE = -1;
 
 export class Double {
-  public readonly numbers;
+  public readonly signed;
 
   public readonly base;
 
-  public readonly signed;
+  public readonly numbers;
 
   protected constructor(value: DoubleValue) {
-    const { numbers, base, signed } = createDoublePropsFromValue(value);
+    const props = createDoublePropsFromValue(value);
 
-    this.numbers = numbers;
-    this.base = base;
-    this.signed = signed;
+    this.signed = props.signed;
+    this.base = props.base;
+    this.numbers = props.numbers;
   }
 
   public get data(): number {
@@ -57,11 +57,15 @@ export class Double {
   public plus(value: DoubleValue): Double {
     const double = createDouble(value);
 
+    if (this.isZero()) {
+      return double;
+    }
+
     if (double.isZero()) {
       return this.clone();
     }
 
-    return this.signed == double.signed
+    return this.signed === double.signed
       ? operationPlus(this, double)
       : operationMinus(this, double.negative());
   }
@@ -69,15 +73,15 @@ export class Double {
   public minus(value: DoubleValue): Double {
     const double = createDouble(value);
 
+    if (this.isZero()) {
+      return double.isZero() ? double : double.negative();
+    }
+
     if (double.isZero()) {
       return this.clone();
     }
 
-    if (this.isZero()) {
-      return double.negative();
-    }
-
-    return this.signed == double.signed
+    return this.signed === double.signed
       ? operationMinus(this, double)
       : operationPlus(this, double.negative());
   }
@@ -153,7 +157,7 @@ export class Double {
   }
 
   public lessThanOrEqualTo(value: DoubleValue): boolean {
-    return compareTo(this, createDouble(value)) < 1;
+    return compareTo(this, createDouble(value)) <= 0;
   }
 
   public abs(): Double {
@@ -184,22 +188,32 @@ export class Double {
     return this.signed === SIGNED_NEUTRO;
   }
 
-  public format(numbers = FIXED_DEFAULT, roundMode = ROUNDING): string {
-    checkInt32(numbers, 0, DIGITS_MAX);
-    checkInt32(roundMode, 0, 8);
+  public format(fixed = FIXED_DEFAULT, rounding = ROUNDING): string {
+    checkInt32(fixed, 0, DIGITS_MAX);
+    checkInt32(rounding, 0, 8);
 
-    const double = round(this, numbers + base10Exp(this) + 1, roundMode);
+    const double = round(this, fixed + base10Exp(this) + 1, rounding);
 
-    const str = decimaltoString(
-      double.abs(),
-      false,
-      numbers + base10Exp(double) + 1
-    );
+    const sd = fixed + base10Exp(double) + 1;
 
-    return this.isNegative() && !this.isZero() ? `-${str}` : str;
+    return decimalToString(double.abs(), false, sd);
   }
 
-  public roundCeil(decimals = 0): Double {
+  public round(precision = 0): Double {
+    let size = 0; // Enabled number
+
+    for (let i = 0; i <= this.base; i++) {
+      size += String(this.numbers[i]).length;
+    }
+
+    if (this.base + 1 < this.numbers.length && precision > 0) {
+      size += precision;
+    }
+
+    return round(this, size, 4);
+  }
+
+  public roundCeil(precision = 0): Double {
     const position = this.base + 1;
 
     if (this.numbers.length === position) {
@@ -210,7 +224,7 @@ export class Double {
       });
     }
 
-    if (decimals <= 0) {
+    if (precision <= 0) {
       const numbers = this.numbers.slice(0, position);
 
       numbers[this.base] = this.numbers[this.base] + 1;
@@ -222,22 +236,22 @@ export class Double {
       });
     }
 
-    const base = Math.floor(decimals / BASE_LOG);
-    const size = decimals % BASE_LOG;
+    const base = Math.floor(precision / BASE_LOG);
+    const size = precision % BASE_LOG;
 
-    const decimalsPos = this.base + base;
+    const decimals = this.base + base;
 
-    const numbers = this.numbers.slice(0, decimalsPos + 1);
+    const numbers = this.numbers.slice(0, decimals + 1);
 
     if (size > 0) {
-      const _number = this.numbers[decimalsPos + 1];
+      const _number = this.numbers[decimals + 1];
 
       if (_number) {
         const ceil = +String(_number).slice(0, size) + 1;
         numbers.push(+String(ceil).padEnd(BASE_LOG, '0'));
       }
     } else {
-      numbers[decimalsPos] = this.numbers[decimalsPos] + 1;
+      numbers[decimals] = this.numbers[decimals] + 1;
     }
 
     return new Double({
@@ -247,25 +261,28 @@ export class Double {
     });
   }
 
-  public roundFloor(decimals = 0): Double {
-    if (decimals <= 0) {
-      return new Double({
-        numbers: this.numbers.slice(0, this.base + 1),
-        base: this.base,
-        signed: this.signed
-      });
+  public roundFloor(precision = 0): Double {
+    if (precision === 0) {
+      return this.base < 0
+        ? Double.zero()
+        : new Double({
+            numbers: this.numbers.slice(0, this.base + 1),
+            base: this.base,
+            signed: this.signed
+          });
     }
 
-    const base = Math.floor(decimals / BASE_LOG);
-    const size = decimals % BASE_LOG;
+    const base = Math.floor(precision / BASE_LOG);
+    const size = precision % BASE_LOG;
+    const position = this.base + base + 1;
 
-    const numbers = this.numbers.slice(0, this.base + base + 1);
+    const numbers = this.numbers.slice(0, position);
 
     if (size > 0) {
-      const _number = this.numbers[this.base + base + 1];
+      const _number = this.numbers[position];
 
       if (_number) {
-        const floor = String(_number).slice(0, size);
+        const floor = String(_number).padStart(BASE_LOG, '0').slice(0, size);
         numbers.push(+floor.padEnd(BASE_LOG, '0'));
       }
     }
@@ -290,7 +307,7 @@ export class Double {
   }
 
   public toString(): string {
-    return decimaltoString(this, isExponent(base10Exp(this)));
+    return decimalToString(this, isExponent(base10Exp(this)));
   }
 
   public static create(value: DoubleValue): Double {
@@ -300,6 +317,14 @@ export class Double {
   public static zero(): Double {
     return new Double(ZERO_PROPS);
   }
+}
+
+export function double(value: DoubleValue): Double {
+  return Double.create(value);
+}
+
+function createDouble(value: DoubleValue): Double {
+  return value instanceof Double ? value : Double.create(value);
 }
 
 function parseDouble(signed: number, doubleStr: string): DoubleProps {
@@ -380,10 +405,6 @@ function parseDouble(signed: number, doubleStr: string): DoubleProps {
   }
 }
 
-function createDouble(value: DoubleValue): Double {
-  return value instanceof Double ? value : Double.create(value);
-}
-
 function createDoubleFromNumber(value: number): DoubleProps {
   if (value * 0 !== 0) {
     throw Error('[DecimalError] Invalid argument: ' + value);
@@ -403,6 +424,21 @@ function createDoubleFromNumber(value: number): DoubleProps {
   return parseDouble(signed, value.toString());
 }
 
+function createDoubleFromString(value: string): DoubleProps {
+  let signed = SIGNED_POSITIVE;
+
+  if (value.charCodeAt(0) === NEGATIVE_CHAR) {
+    value = value.slice(1);
+    signed = SIGNED_NEGATIVE;
+  }
+
+  if (!DOUBLE_REGEX.test(value)) {
+    throw Error('[DecimalError] Invalid argument: ' + value);
+  }
+
+  return parseDouble(signed, value);
+}
+
 function createDoublePropsFromValue(value: DoubleValue): DoubleProps {
   if (value instanceof Double) {
     return value.props();
@@ -419,19 +455,8 @@ function createDoublePropsFromValue(value: DoubleValue): DoubleProps {
   return value;
 }
 
-function createDoubleFromString(value: string): DoubleProps {
-  let signed = SIGNED_POSITIVE;
-
-  if (value.charCodeAt(0) === NEGATIVE_CHAR) {
-    value = value.slice(1);
-    signed = SIGNED_NEGATIVE;
-  }
-
-  if (!DOUBLE_REGEX.test(value)) {
-    throw Error('[DecimalError] Invalid argument: ' + value);
-  }
-
-  return parseDouble(signed, value);
+function normalizeNumbers(double: Double): number[] {
+  return (double.base === -1 ? [0] : []).concat(double.numbers);
 }
 
 function operationPlus(double1: Double, double2: Double): Double {
@@ -685,6 +710,29 @@ function getFactorForDivider(denominator: Double): number {
   return Math.pow(10, String(deminals).replace(/0+$/, '').length);
 }
 
+function compare(
+  numbers1: number[],
+  numbers2: number[],
+  length1: number,
+  length2: number
+): number {
+  if (length1 != length2) {
+    return length1 > length2 ? 1 : -1;
+  }
+
+  let result = 0;
+  let i = 0;
+
+  for (; i < length1; i++) {
+    if (numbers1[i] != numbers2[i]) {
+      result = numbers1[i] > numbers2[i] ? 1 : -1;
+      break;
+    }
+  }
+
+  return result;
+}
+
 function operationDivide(divider: DividerValue): Double {
   if (divider.denominator.isZero()) {
     throw Error('[DecimalError] Division by zero');
@@ -898,54 +946,51 @@ function multiplyInteger(numbers: number[], size: number): number[] {
   return numbers;
 }
 
-function compareTo(number1: Double, number2: Double): number {
-  if (number1.signed !== number2.signed) {
-    return number1.signed || -number2.signed;
+function compareTo(double1: Double, double2: Double): number {
+  if (double1.isZero() && double2.isZero()) {
+    return 0;
   }
 
-  if (number1.base !== number2.base) {
-    return number1.base > number2.base !== number1.signed < 0 ? 1 : -1;
+  if (double1.signed !== double2.signed) {
+    return double1.signed - double2.signed;
   }
 
-  const numbers1 = number1.numbers;
-  const numbers2 = number2.numbers;
+  const base1 = double1.base;
+  const base2 = double2.base;
+
+  if (base1 !== base2 && base1 >= 0 && base2 >= 0) {
+    return base1 - base2;
+  }
+
+  const numbers1 = normalizeNumbers(double1);
+  const numbers2 = normalizeNumbers(double2);
+
   const length1 = numbers1.length;
-  const length2 = numbers2.length;
 
-  for (let i = 0, j = length1 < length2 ? length1 : length2; i < j; ++i) {
+  for (let i = 0; i < length1; i++) {
     if (numbers1[i] !== numbers2[i]) {
-      return numbers1[i] > numbers2[i] !== number1.signed < 0 ? 1 : -1;
+      return (numbers1[i] - numbers2[i]) * double1.signed;
     }
   }
 
-  return length1 === length2
-    ? 0
-    : length1 > length2 !== number1.signed < 0
-    ? 1
-    : -1;
-}
+  const length2 = numbers2.length;
+  const length = length1 > length2 ? length1 : length2;
 
-function compare(
-  numbers1: number[],
-  numbers2: number[],
-  length1: number,
-  length2: number
-): number {
-  if (length1 != length2) {
-    return length1 > length2 ? 1 : -1;
-  }
+  for (let i = 0; i < length - double1.base; i++) {
+    if (!numbers2[i]) {
+      return 1 * double1.signed;
+    }
 
-  let result = 0;
-  let i = 0;
+    if (!numbers1[i]) {
+      return -1 * double1.signed;
+    }
 
-  for (; i < length1; i++) {
-    if (numbers1[i] != numbers2[i]) {
-      result = numbers1[i] > numbers2[i] ? 1 : -1;
-      break;
+    if (numbers1[i] !== numbers2[i]) {
+      return (numbers1[i] - numbers2[i]) * double1.signed;
     }
   }
 
-  return result;
+  return 0;
 }
 
 function subtract(
@@ -1099,10 +1144,10 @@ function round(double: Double, precisionDef: number, rm?: any): Double {
     throw Error('[DecimalError] Exponent out of range: ' + base10Exp(double));
   }
 
-  return Double.create({ numbers, base: base, signed });
+  return Double.create({ numbers, base, signed });
 }
 
-function decimaltoString(
+function decimalToString(
   double: Double,
   isExponent: boolean,
   sd?: number
@@ -1147,7 +1192,7 @@ function decimaltoString(
     }
   }
 
-  return double.signed < 0 ? '-' + digits : digits;
+  return double.isNegative() ? '-' + digits : digits;
 }
 
 function isExponent(exponent: number): boolean {

@@ -1,44 +1,21 @@
 export type SealedState<R> = Record<string, (value?: any) => R>;
 
-export class Sealed<R, V, T extends SealedState<R>> {
-  private _otherwise?: () => void;
+export interface SealedAbstract<R, T extends SealedState<R>, V, C = T> {
+  is(key: keyof T): boolean;
 
-  protected constructor(
-    private key: keyof T,
-    private value?: V
-  ) {}
+  otherwise(otherwise: () => void): this;
 
-  public otherwise(otherwise: () => void): this {
-    this._otherwise = otherwise;
-
-    return this;
-  }
-
-  public when(resolver: T, otherwise?: () => void): R {
-    const handler = resolver[this.key];
-
-    const _otherwise = otherwise ?? this._otherwise;
-
-    _otherwise && _otherwise();
-
-    if (handler) {
-      return handler(this.value);
-    }
-
-    throw Error('Sealed class could not resolve call');
-  }
-
-  public is(key: keyof T): boolean {
-    return this.key === key;
-  }
+  when(resolver: C, otherwise?: () => void): V;
 }
 
-export class PartialSealed<R, V, T extends SealedState<R>> {
-  private _otherwise?: () => void;
+export class SealedPartial<R, V, T extends SealedState<R>>
+  implements SealedAbstract<R, T, Undefined<R>, Partial<T>>
+{
+  protected _otherwise?: () => void;
 
   protected constructor(
-    private key: keyof T,
-    private value?: V
+    protected key: keyof T,
+    protected value?: V
   ) {}
 
   public otherwise(otherwise: () => void): this {
@@ -59,5 +36,24 @@ export class PartialSealed<R, V, T extends SealedState<R>> {
 
   public is(key: keyof T): boolean {
     return this.key === key;
+  }
+}
+
+export class Sealed<R, V, T extends SealedState<R>>
+  extends SealedPartial<R, V, T>
+  implements SealedAbstract<R, T, R, T>
+{
+  public when(resolver: T, otherwise?: () => void): R {
+    const handler = resolver[this.key];
+
+    const _otherwise = otherwise ?? this._otherwise;
+
+    _otherwise && _otherwise();
+
+    if (handler) {
+      return handler(this.value);
+    }
+
+    throw Error('Sealed class could not resolve call');
   }
 }

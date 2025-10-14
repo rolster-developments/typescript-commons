@@ -1,5 +1,5 @@
 import { Observer, observable } from '../objects/observable';
-import { PartialSealed, SealedState } from '../states/sealed';
+import { SealedPartial, SealedState } from '../states/sealed';
 
 interface StreamResponse<T> {
   response: T;
@@ -12,7 +12,7 @@ interface StreamState<S, V = any> extends SealedState<V> {
   failure: (error: any) => V;
 }
 
-export class Stream<S, V = any> extends PartialSealed<
+export class Stream<S, V = any> extends SealedPartial<
   V,
   StreamResponse<S>,
   StreamState<S, V>

@@ -1,5 +1,10 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["DOM", "ES2020"],
+    "module": "ESNext",
+    "target": "ES2020"
+  },
   "files": ["node_modules/@rolster/types/index.d.ts"],
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts"]

@@ -19,11 +19,8 @@
     "sourceMap": true,
     "strict": true,
     "target": "ES2020",
-    "typeRoots": ["node_modules/@types/**/*.d.ts", "src/**/*.d.ts"]
+    "types": ["vitest/globals"]
   },
-  "files": [
-    "node_modules/@types/jasmine/index.d.ts",
-    "node_modules/@rolster/types/index.d.ts"
-  ],
+  "files": ["node_modules/@rolster/types/index.d.ts"],
   "include": ["src/**/*.ts", "src/**/*.spec.ts"]
 }

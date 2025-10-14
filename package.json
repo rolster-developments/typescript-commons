@@ -1,6 +1,6 @@
 {
   "name": "@rolster/commons",
-  "version": "3.0.1",
+  "version": "3.0.5",
   "description": "Commons utilities package compatible with Typescript projects.",
   "module": "dist/esm/index.js",
   "main": "dist/cjs/index.js",
@@ -21,7 +21,7 @@
     "prettier": "prettier . --write",
     "clean": "rimraf ./dist",
     "build": "npm run clean && tsc -p tsconfig.app.json && rollup -c rollup.config.js",
-    "test": "karma start --single-run=true",
+    "test": "vitest run",
     "test:watch": "karma start --single-run=false",
     "prepublishOnly": "npm run build"
   },
@@ -31,18 +31,14 @@
     "@rollup/plugin-typescript": "^11.1.3",
     "@rolster/rollup": "^1.0.8",
     "@rolster/types": "^1.1.0",
-    "@types/jasmine": "^5.1.9",
-    "jasmine": "^5.10.0",
-    "karma": "^6.4.4",
-    "karma-chrome-launcher": "^3.2.0",
-    "karma-jasmine": "^5.1.0",
-    "karma-spec-reporter": "^0.0.36",
-    "karma-typescript": "^5.5.4",
+    "@vitest/ui": "^3.2.4",
+    "jsdom": "^27.0.0",
     "prettier": "^3.0.3",
     "rimraf": "^3.0.2",
     "rollup": "^2.32.0",
     "tslib": "^2.4.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
   },
   "repository": {
     "type": "git",
