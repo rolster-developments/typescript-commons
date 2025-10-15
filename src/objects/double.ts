@@ -15,21 +15,24 @@ interface DividerValue {
 
 const SAFE_INTEGER_MAX = 9007199254740991;
 const DOUBLE_REGEX = /^(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i;
+
 const BASE = 1e5;
 const BASE_LOG = 5;
 const BASE_NEGATIVE = -5;
 const BASE_POSITIVE = 15;
 const BASE_MAX = Math.floor(SAFE_INTEGER_MAX / BASE_LOG);
+
 const DIGITS_MAX = 1e9;
 const NEGATIVE_CHAR = 45;
 const PRECISION = 20;
 const ROUNDING = 4;
 const FIXED_DEFAULT = 2;
+
 const SIGNED_POSITIVE = 1;
 const SIGNED_NEUTRO = 0;
 const SIGNED_NEGATIVE = -1;
-const ZERO_CHAR = 48;
 
+const ZERO_CHAR = 48;
 const ZERO_PROPS: DoubleProps = {
   numbers: [0],
   base: 0,
@@ -62,25 +65,69 @@ export class Double {
   public plus(value: DoubleValue): Double {
     const double = createDouble(value);
 
-    return this.signed === double.signed
-      ? doublePlus(this, double)
-      : operationMinus(this, double.negative());
-  }
-
-  public minus(value: DoubleValue): Double {
-    const double = createDouble(value);
+    if (this.isZero() && double.isZero()) {
+      return Double.zero();
+    }
 
     if (this.isZero()) {
-      return double.isZero() ? double : double.negative();
+      return double.clone();
     }
 
     if (double.isZero()) {
       return this.clone();
     }
 
-    return this.signed === double.signed
-      ? operationMinus(this, double)
-      : doublePlus(this, double.negative());
+    if (this.signed === double.signed) {
+      return doublePlus(this, double);
+    }
+
+    if (this.abs().equals(double.abs())) {
+      return Double.zero();
+    }
+
+    const absThis = this.abs();
+    const absDouble = double.abs();
+
+    return absThis.greaterThan(absDouble)
+      ? doubleMinus(absThis, absDouble, this.signed)
+      : doubleMinus(absDouble, absThis, double.signed);
+  }
+
+  public minus(value: DoubleValue): Double {
+    const double = createDouble(value);
+
+    if ((this.isZero() && double.isZero()) || this.equals(double)) {
+      return Double.zero();
+    }
+
+    if (this.isZero()) {
+      return double.negative();
+    }
+
+    if (double.isZero()) {
+      return this.clone();
+    }
+
+    const absThis = this.abs();
+    const absDouble = double.abs();
+
+    if (this.isPositive() && double.isPositive()) {
+      return absThis.greaterThan(absDouble)
+        ? doubleMinus(absThis, absDouble, SIGNED_POSITIVE)
+        : doubleMinus(absDouble, absThis, SIGNED_NEGATIVE);
+    }
+
+    if (this.isPositive() && double.isNegative()) {
+      return doublePlus(absThis, absDouble);
+    }
+
+    if (this.isNegative() && double.isPositive()) {
+      return doublePlus(absThis, absDouble).negative();
+    }
+
+    return absThis.greaterThan(absDouble)
+      ? doubleMinus(absThis, absDouble, SIGNED_NEGATIVE)
+      : doubleMinus(absDouble, absThis, SIGNED_POSITIVE);
   }
 
   public multiply(value: DoubleValue): Double {
@@ -169,7 +216,7 @@ export class Double {
     return new Double({
       numbers: this.numbers,
       base: this.base,
-      signed: -this.signed
+      signed: this.signed * -1
     });
   }
 
@@ -418,7 +465,7 @@ function createDoubleFromNumber(value: number): DoubleProps {
     signed = SIGNED_NEGATIVE;
   }
 
-  return parseDouble(signed, value.toString());
+  return parseDouble(signed, String(value));
 }
 
 function createDoubleFromString(value: string): DoubleProps {
@@ -452,28 +499,60 @@ function createDoublePropsFromValue(value: DoubleValue): DoubleProps {
   return value;
 }
 
-function normalizeNumbers(double: Double): number[] {
+function normalizeZero(double: Double): number[] {
   return (double.base === -1 ? [0] : []).concat(double.numbers);
 }
 
+function normalizeInteger(double: Double): number[] {
+  const numbers = [...double.numbers];
+  const length = double.base + 1;
+
+  if (length > double.numbers.length) {
+    for (let i = double.numbers.length; i < length; i++) {
+      numbers.push(0);
+    }
+  }
+
+  return numbers;
+}
+
+function removeZerosInNumbers(numbers: number[]): number[] {
+  const _numbers: number[] = [];
+
+  for (let i = 0; i < numbers.length; i++) {
+    const number = numbers[i];
+
+    if (number !== 0) {
+      _numbers.push(number);
+    } else {
+      const beforeIsDefined = i > 0 ? numbers[i - 1] > 0 : false;
+
+      beforeIsDefined && _numbers.push(number);
+    }
+  }
+
+  return _numbers;
+}
+
+function normalizeNumbers(numbers: number[], base: number) {
+  const integers = numbers.slice(0, base);
+  const decimals = numbers.slice(base).reverse();
+
+  const _numbers = removeZerosInNumbers(integers);
+  const _base = integers.length - _numbers.length;
+
+  return {
+    base: base - _base,
+    numbers: [..._numbers, ...removeZerosInNumbers(decimals).reverse()]
+  };
+}
+
 function doublePlus(double1: Double, double2: Double): Double {
-  if (double1.isZero() && double2.isZero()) {
-    return Double.zero();
-  }
-
-  if (double1.isZero()) {
-    return double2.clone();
-  }
-
-  if (double2.isZero()) {
-    return double1.clone();
-  }
-
   const base1 = double1.base;
   const base2 = double2.base;
 
-  const numbers1 = base1 < 0 ? double1.numbers : normalizeNumbers(double1);
-  const numbers2 = base2 < 0 ? double2.numbers : normalizeNumbers(double2);
+  const numbers1 = double1.numbers;
+  const numbers2 = double2.numbers;
 
   const integers1 = numbers1.slice(0, base1 + 1).reverse();
   const integers2 = numbers2.slice(0, base2 + 1).reverse();
@@ -524,109 +603,57 @@ function doublePlus(double1: Double, double2: Double): Double {
   return Double.create({ base, numbers, signed: double1.signed });
 }
 
-function operationMinus(double1: Double, double2: Double): Double {
-  if (double1.isZero() && double2.isZero()) {
-    return Double.zero();
-  }
+function doubleMinus(double1: Double, double2: Double, signed: number): Double {
+  const base1 = double1.base;
+  const base2 = double2.base;
 
-  let numbersTemp, index1, index2, length, verify;
+  const numbers1 = normalizeInteger(double1);
+  const numbers2 = normalizeInteger(double2);
 
-  let numbers1 = [...double1.numbers].slice();
-  let numbers2 = [...double2.numbers];
+  const integers1 = numbers1.slice(0, base1 + 1).reverse();
+  const integers2 = numbers2.slice(0, base2 + 1).reverse();
 
-  let signed = double2.signed;
-  let base1 = double1.base;
-  let base2 = double2.base;
-  let baseDiff = base1 - base2;
+  const decimals1 = numbers1.slice(base1 + 1).reverse();
+  const decimals2 = numbers2.slice(base2 + 1).reverse();
 
-  if (baseDiff) {
-    verify = baseDiff < 0;
+  const integersLength =
+    integers1.length > integers2.length ? integers1.length : integers2.length;
 
-    if (verify) {
-      numbersTemp = numbers1;
-      baseDiff = -baseDiff;
-      length = numbers2.length;
+  const decimalsLength =
+    decimals1.length > decimals2.length ? decimals1.length : decimals2.length;
+
+  let _base = double1.base > double2.base ? double1.base : double2.base;
+
+  const _numbers: number[] = [];
+  let carry = 0;
+
+  for (let i = 0; i < decimalsLength; i++) {
+    const total = (decimals1[i] ?? 0) - (decimals2[i] ?? 0) - carry;
+
+    if (total < 0) {
+      carry = 1;
+      _numbers.unshift(100000 - Math.abs(total));
     } else {
-      numbersTemp = numbers2;
-      base2 = base1;
-      length = numbers1.length;
-    }
-
-    index1 = Math.max(Math.ceil(PRECISION / BASE_LOG), length) + 2;
-
-    if (baseDiff > index1) {
-      baseDiff = index1;
-      numbersTemp.length = 1;
-    }
-
-    numbersTemp.reverse();
-
-    for (index1 = baseDiff; index1--; ) {
-      numbersTemp.push(0);
-    }
-
-    numbersTemp.reverse();
-  } else {
-    length = numbers2.length;
-    index1 = numbers1.length;
-    verify = index1 < length;
-
-    if (verify) {
-      length = index1;
-    }
-
-    for (index1 = 0; index1 < length; index1++) {
-      if (numbers1[index1] != numbers2[index1]) {
-        verify = numbers1[index1] < numbers2[index1];
-        break;
-      }
-    }
-
-    baseDiff = 0;
-  }
-
-  if (verify) {
-    numbersTemp = numbers1;
-    numbers1 = numbers2;
-    numbers2 = numbersTemp;
-
-    if (signed != 0) {
-      signed = -signed;
+      carry = 0;
+      _numbers.unshift(total);
     }
   }
 
-  length = numbers1.length;
+  for (let i = 0; i < integersLength; i++) {
+    const total = (integers1[i] ?? 0) - (integers2[i] ?? 0) - carry;
 
-  for (index1 = numbers2.length - length; index1 > 0; --index1) {
-    numbers1[length++] = 0;
-  }
-
-  for (index1 = numbers2.length; index1 > baseDiff; ) {
-    if (numbers1[--index1] < numbers2[index1]) {
-      for (index2 = index1; index2 && numbers1[--index2] === 0; ) {
-        numbers1[index2] = BASE - 1;
-      }
-
-      --numbers1[index2];
-      numbers1[index1] += BASE;
+    if (total < 0) {
+      carry = 1;
+      _numbers.unshift(100000 - Math.abs(total));
+    } else {
+      carry = 0;
+      _numbers.unshift(total);
     }
-
-    numbers1[index1] -= numbers2[index1];
   }
 
-  for (; numbers1[--length] === 0; ) {
-    numbers1.pop();
-  }
+  const { numbers, base } = normalizeNumbers(_numbers, _base);
 
-  for (; numbers1[0] === 0; numbers1.shift()) {
-    --base2;
-  }
-
-  if (!numbers1[0]) {
-    return Double.zero();
-  }
-
-  return Double.create({ numbers: numbers1, base: base2, signed });
+  return Double.create({ base, numbers, signed });
 }
 
 function operationMultiply(double1: Double, double2: Double): Double {
@@ -948,8 +975,8 @@ function compareTo(double1: Double, double2: Double): number {
     return base1 - base2;
   }
 
-  const numbers1 = normalizeNumbers(double1);
-  const numbers2 = normalizeNumbers(double2);
+  const numbers1 = normalizeZero(double1);
+  const numbers2 = normalizeZero(double2);
 
   const length1 = numbers1.length;
 
@@ -1169,6 +1196,22 @@ function numbersToString(numbers: number[]): string {
   }
 
   return str + word;
+}
+
+function _doubleToString(double: Double) {
+  let integerStr = '';
+  let decimalStr = '';
+
+  for (let i = 0; i < double.numbers.length; i++) {
+    if (double.base < 0) {
+      const decimal = String(double.numbers[i]);
+
+      decimalStr += decimalStr ? decimal : decimal.padStart(BASE_LOG, '0');
+    } else if (i <= double.base) {
+    }
+  }
+
+  return integerStr;
 }
 
 function doubleToString(
