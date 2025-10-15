@@ -22,14 +22,19 @@ const BASE_POSITIVE = 15;
 const BASE_MAX = Math.floor(SAFE_INTEGER_MAX / BASE_LOG);
 const DIGITS_MAX = 1e9;
 const NEGATIVE_CHAR = 45;
-const ZERO_CHAR = 48;
-const ZERO_PROPS: DoubleProps = { numbers: [0], base: 0, signed: 0 };
 const PRECISION = 20;
 const ROUNDING = 4;
 const FIXED_DEFAULT = 2;
 const SIGNED_POSITIVE = 1;
 const SIGNED_NEUTRO = 0;
 const SIGNED_NEGATIVE = -1;
+const ZERO_CHAR = 48;
+
+const ZERO_PROPS: DoubleProps = {
+  numbers: [0],
+  base: 0,
+  signed: 0
+};
 
 export class Double {
   public readonly signed;
@@ -50,23 +55,15 @@ export class Double {
     return +this;
   }
 
-  public get fixed(): number {
+  public get rounded(): number {
     return +this.format();
   }
 
   public plus(value: DoubleValue): Double {
     const double = createDouble(value);
 
-    if (this.isZero()) {
-      return double;
-    }
-
-    if (double.isZero()) {
-      return this.clone();
-    }
-
     return this.signed === double.signed
-      ? operationPlus(this, double)
+      ? doublePlus(this, double)
       : operationMinus(this, double.negative());
   }
 
@@ -83,7 +80,7 @@ export class Double {
 
     return this.signed === double.signed
       ? operationMinus(this, double)
-      : operationPlus(this, double.negative());
+      : doublePlus(this, double.negative());
   }
 
   public multiply(value: DoubleValue): Double {
@@ -196,7 +193,7 @@ export class Double {
 
     const sd = fixed + base10Exp(double) + 1;
 
-    return decimalToString(double.abs(), false, sd);
+    return doubleToString(double.abs(), false, sd);
   }
 
   public round(precision = 0): Double {
@@ -307,7 +304,7 @@ export class Double {
   }
 
   public toString(): string {
-    return decimalToString(this, isExponent(base10Exp(this)));
+    return doubleToString(this, isExponent(base10Exp(this)));
   }
 
   public static create(value: DoubleValue): Double {
@@ -459,83 +456,72 @@ function normalizeNumbers(double: Double): number[] {
   return (double.base === -1 ? [0] : []).concat(double.numbers);
 }
 
-function operationPlus(double1: Double, double2: Double): Double {
+function doublePlus(double1: Double, double2: Double): Double {
   if (double1.isZero() && double2.isZero()) {
     return Double.zero();
   }
 
+  if (double1.isZero()) {
+    return double2.clone();
+  }
+
+  if (double2.isZero()) {
+    return double1.clone();
+  }
+
+  const base1 = double1.base;
+  const base2 = double2.base;
+
+  const numbers1 = base1 < 0 ? double1.numbers : normalizeNumbers(double1);
+  const numbers2 = base2 < 0 ? double2.numbers : normalizeNumbers(double2);
+
+  const integers1 = numbers1.slice(0, base1 + 1).reverse();
+  const integers2 = numbers2.slice(0, base2 + 1).reverse();
+
+  const decimals1 = numbers1.slice(base1 + 1).reverse();
+  const decimals2 = numbers2.slice(base2 + 1).reverse();
+
+  const integersLength =
+    integers1.length > integers2.length ? integers1.length : integers2.length;
+
+  const decimalsLength =
+    decimals1.length > decimals2.length ? decimals1.length : decimals2.length;
+
+  let base = double1.base > double2.base ? double1.base : double2.base;
+
+  const numbers: number[] = [];
   let carry = 0;
-  let numbersTemp;
-  let length;
 
-  let numbers1 = [...double1.numbers].slice();
-  let numbers2 = [...double2.numbers];
+  for (let i = 0; i < decimalsLength; i++) {
+    const total = (decimals1[i] ?? 0) + (decimals2[i] ?? 0) + carry;
 
-  let base1 = double1.base;
-  let base2 = double2.base;
-  let baseDiff = base1 - base2;
-
-  if (baseDiff) {
-    if (baseDiff < 0) {
-      numbersTemp = numbers1;
-      baseDiff = -baseDiff;
-      length = numbers2.length;
+    if (total > 99999) {
+      carry = 1;
+      numbers.unshift(+String(total).slice(1));
     } else {
-      numbersTemp = numbers2;
-      base2 = base1;
-      length = numbers1.length;
+      carry = 0;
+      numbers.unshift(total);
     }
+  }
 
-    base1 = Math.ceil(PRECISION / BASE_LOG);
-    length = base1 > length ? base1 + 1 : length + 1;
+  for (let i = 0; i < integersLength; i++) {
+    const total = (integers1[i] ?? 0) + (integers2[i] ?? 0) + carry;
 
-    if (baseDiff > length) {
-      baseDiff = length;
-      numbersTemp.length = 1;
+    if (total > 99999) {
+      carry = 1;
+      numbers.unshift(+String(total).slice(1));
+    } else {
+      carry = 0;
+      numbers.unshift(total);
     }
-
-    numbersTemp.reverse();
-
-    for (; baseDiff--; ) {
-      numbersTemp.push(0);
-    }
-
-    numbersTemp.reverse();
   }
 
-  length = numbers1.length;
-  baseDiff = numbers2.length;
-
-  if (length - baseDiff < 0) {
-    baseDiff = length;
-    numbersTemp = numbers2;
-    numbers2 = numbers1;
-    numbers1 = numbersTemp;
+  if (carry > 0) {
+    numbers.unshift(carry);
+    base++;
   }
 
-  for (; baseDiff; ) {
-    carry =
-      ((numbers1[--baseDiff] =
-        numbers1[baseDiff] + numbers2[baseDiff] + carry) /
-        BASE) |
-      0;
-    numbers1[baseDiff] %= BASE;
-  }
-
-  if (carry) {
-    numbers1.unshift(carry);
-    ++base2;
-  }
-
-  for (length = numbers1.length; numbers1[--length] == 0; ) {
-    numbers1.pop();
-  }
-
-  return Double.create({
-    numbers: numbers1,
-    base: base2,
-    signed: double1.signed
-  });
+  return Double.create({ base, numbers, signed: double1.signed });
 }
 
 function operationMinus(double1: Double, double2: Double): Double {
@@ -1147,12 +1133,50 @@ function round(double: Double, precisionDef: number, rm?: any): Double {
   return Double.create({ numbers, base, signed });
 }
 
-function decimalToString(
+function numbersToString(numbers: number[]): string {
+  let indexLastWord = numbers.length - 1;
+  let str = '';
+  let word = numbers[0];
+
+  if (indexLastWord > 0) {
+    let i = 1;
+    let countZero;
+    str += word;
+
+    for (; i < indexLastWord; i++) {
+      const numberString = numbers[i].toString();
+      countZero = BASE_LOG - numberString.length;
+
+      if (countZero) {
+        str += padZeroString(countZero);
+      }
+
+      str += numberString;
+    }
+
+    word = numbers[i];
+    countZero = BASE_LOG - word.toString().length;
+
+    if (countZero) {
+      str += padZeroString(countZero);
+    }
+  } else if (word === 0) {
+    return '0';
+  }
+
+  for (; word % 10 === 0; ) {
+    word /= 10;
+  }
+
+  return str + word;
+}
+
+function doubleToString(
   double: Double,
   isExponent: boolean,
   sd?: number
 ): string {
-  let digits = digitsToString(double.numbers);
+  let digits = numbersToString(double.numbers);
   let length = digits.length;
   let base = base10Exp(double);
   let countZero;
@@ -1208,44 +1232,6 @@ function base10Exp(decimal: Double): number {
   }
 
   return base;
-}
-
-function digitsToString(numbers: number[]): string {
-  let indexLastWord = numbers.length - 1;
-  let str = '';
-  let word = numbers[0];
-
-  if (indexLastWord > 0) {
-    let i = 1;
-    let countZero;
-    str += word;
-
-    for (; i < indexLastWord; i++) {
-      const numberString = numbers[i].toString();
-      countZero = BASE_LOG - numberString.length;
-
-      if (countZero) {
-        str += padZeroString(countZero);
-      }
-
-      str += numberString;
-    }
-
-    word = numbers[i];
-    countZero = BASE_LOG - word.toString().length;
-
-    if (countZero) {
-      str += padZeroString(countZero);
-    }
-  } else if (word === 0) {
-    return '0';
-  }
-
-  for (; word % 10 === 0; ) {
-    word /= 10;
-  }
-
-  return str + word;
 }
 
 function padZeroString(size: number): string {
