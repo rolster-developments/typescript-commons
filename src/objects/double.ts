@@ -1198,22 +1198,6 @@ function numbersToString(numbers: number[]): string {
   return str + word;
 }
 
-function _doubleToString(double: Double) {
-  let integerStr = '';
-  let decimalStr = '';
-
-  for (let i = 0; i < double.numbers.length; i++) {
-    if (double.base < 0) {
-      const decimal = String(double.numbers[i]);
-
-      decimalStr += decimalStr ? decimal : decimal.padStart(BASE_LOG, '0');
-    } else if (i <= double.base) {
-    }
-  }
-
-  return integerStr;
-}
-
 function doubleToString(
   double: Double,
   isExponent: boolean,

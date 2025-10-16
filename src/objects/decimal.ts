@@ -44,18 +44,86 @@ export class BigDecimal {
 
   public abs(): BigDecimal {
     return new BigDecimal({
-      decimals: this.decimals,
-      integers: this.integers,
+      decimals: [...this.decimals],
+      integers: [...this.integers],
       signed: SIGNED_POSITIVE
     });
   }
 
   public negative(): BigDecimal {
     return new BigDecimal({
-      decimals: this.decimals,
-      integers: this.integers,
+      decimals: [...this.decimals],
+      integers: [...this.integers],
       signed: (this.signed * -1) as Signed
     });
+  }
+
+  public plus(value: BigDecimalValue): BigDecimal {
+    const number = valueToBigDecimal(value);
+
+    if (this.isZero() && number.isZero()) {
+      return BigDecimal.zero();
+    }
+
+    if (this.isZero()) {
+      return number.clone();
+    }
+
+    if (number.isZero()) {
+      return this.clone();
+    }
+
+    if (this.signed === number.signed) {
+      return operationPlus(this, number, this.signed);
+    }
+
+    if (this.abs().equals(number.abs())) {
+      return BigDecimal.zero();
+    }
+
+    const thisAbs = this.abs();
+    const numberAbs = number.abs();
+
+    return thisAbs.greaterThan(numberAbs)
+      ? operationMinus(thisAbs, numberAbs, this.signed)
+      : operationMinus(numberAbs, thisAbs, number.signed);
+  }
+
+  public minus(value: BigDecimalValue): BigDecimal {
+    const number = valueToBigDecimal(value);
+
+    if ((this.isZero() && number.isZero()) || this.equals(number)) {
+      return BigDecimal.zero();
+    }
+
+    if (this.isZero()) {
+      return number.negative();
+    }
+
+    if (number.isZero()) {
+      return this.clone();
+    }
+
+    const thisAbs = this.abs();
+    const numberAbs = number.abs();
+
+    if (this.isPositive() && number.isPositive()) {
+      return thisAbs.greaterThan(numberAbs)
+        ? operationMinus(thisAbs, numberAbs, SIGNED_POSITIVE)
+        : operationMinus(numberAbs, thisAbs, SIGNED_NEGATIVE);
+    }
+
+    if (this.isPositive() && number.isNegative()) {
+      return operationPlus(thisAbs, numberAbs, SIGNED_POSITIVE);
+    }
+
+    if (this.isNegative() && number.isPositive()) {
+      return operationPlus(thisAbs, numberAbs, SIGNED_NEGATIVE);
+    }
+
+    return thisAbs.greaterThan(numberAbs)
+      ? operationMinus(thisAbs, numberAbs, SIGNED_NEGATIVE)
+      : operationMinus(numberAbs, thisAbs, SIGNED_POSITIVE);
   }
 
   public isNegative(): boolean {
@@ -114,8 +182,8 @@ export class BigDecimal {
 
   public clone(): BigDecimal {
     return new BigDecimal({
-      decimals: this.decimals,
-      integers: this.integers,
+      decimals: [...this.decimals],
+      integers: [...this.integers],
       signed: this.signed
     });
   }
@@ -242,7 +310,7 @@ function bigDecimalToString(number: BigDecimal): string {
     const integer = String(number.integers[i]);
 
     if (i !== 0) {
-      integerStr = integer.padEnd(SAFE_BASE_LOG, '0') + integerStr;
+      integerStr = integer.padStart(SAFE_BASE_LOG, '0') + integerStr;
     } else {
       integerStr = integer + integerStr;
     }
@@ -297,4 +365,124 @@ function compareTo(number1: BigDecimal, number2: BigDecimal): number {
   }
 
   return 0;
+}
+
+function normalizeIntegers(numbers: number[]): number[] {
+  const _numbers: number[] = [];
+
+  for (let i = 0; i < numbers.length; i++) {
+    const number = numbers[i];
+
+    if (number !== 0) {
+      _numbers.push(number);
+    } else {
+      const beforeIsDefined = i > 0 ? numbers[i - 1] > 0 : false;
+
+      beforeIsDefined && _numbers.push(number);
+    }
+  }
+
+  return _numbers;
+}
+
+function operationPlus(
+  number1: BigDecimal,
+  number2: BigDecimal,
+  signed: Signed
+): BigDecimal {
+  const integers1 = number1.integers.reverse();
+  const integers2 = number2.integers.reverse();
+
+  const decimals1 = number1.decimals.reverse();
+  const decimals2 = number2.decimals.reverse();
+
+  const integersLength =
+    integers1.length > integers2.length ? integers1.length : integers2.length;
+
+  const decimalsLength =
+    decimals1.length > decimals2.length ? decimals1.length : decimals2.length;
+
+  const integers: number[] = [];
+  const decimals: number[] = [];
+  let carry = 0;
+
+  for (let i = 0; i < decimalsLength; i++) {
+    const total = (decimals1[i] ?? 0) + (decimals2[i] ?? 0) + carry;
+
+    if (total > 99999) {
+      carry = 1;
+      decimals.unshift(+String(total).slice(1));
+    } else {
+      carry = 0;
+      decimals.unshift(total);
+    }
+  }
+
+  for (let i = 0; i < integersLength; i++) {
+    const total = (integers1[i] ?? 0) + (integers2[i] ?? 0) + carry;
+
+    if (total > 99999) {
+      carry = 1;
+      integers.unshift(+String(total).slice(1));
+    } else {
+      carry = 0;
+      integers.unshift(total);
+    }
+  }
+
+  carry > 0 && integers.unshift(carry);
+
+  return BigDecimal.create({ decimals, integers, signed });
+}
+
+function operationMinus(
+  number1: BigDecimal,
+  number2: BigDecimal,
+  signed: Signed
+): BigDecimal {
+  const integers1 = number1.integers.reverse();
+  const integers2 = number2.integers.reverse();
+
+  const decimals1 = number1.decimals.reverse();
+  const decimals2 = number2.decimals.reverse();
+
+  const integersLength =
+    integers1.length > integers2.length ? integers1.length : integers2.length;
+
+  const decimalsLength =
+    decimals1.length > decimals2.length ? decimals1.length : decimals2.length;
+
+  const integers: number[] = [];
+  const decimals: number[] = [];
+  let carry = 0;
+
+  for (let i = 0; i < decimalsLength; i++) {
+    const total = (decimals1[i] ?? 0) - (decimals2[i] ?? 0) - carry;
+
+    if (total < 0) {
+      carry = 1;
+      decimals.unshift(100000 - Math.abs(total));
+    } else {
+      carry = 0;
+      decimals.unshift(total);
+    }
+  }
+
+  for (let i = 0; i < integersLength; i++) {
+    const total = (integers1[i] ?? 0) - (integers2[i] ?? 0) - carry;
+
+    if (total < 0) {
+      carry = 1;
+      integers.unshift(100000 - Math.abs(total));
+    } else {
+      carry = 0;
+      integers.unshift(total);
+    }
+  }
+
+  return BigDecimal.create({
+    decimals,
+    integers: normalizeIntegers(integers),
+    signed
+  });
 }
