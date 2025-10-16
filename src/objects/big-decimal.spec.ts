@@ -1,4 +1,4 @@
-import { bigDecimal } from './decimal';
+import { bigDecimal } from './big-decimal';
 
 describe('Decimal Class - Creation and Basic Properties', () => {
   test('should create from number and format string', () => {

@@ -15,6 +15,10 @@ const SIGNED_POSITIVE = 1;
 const SIGNED_NEUTRO = 0;
 const SIGNED_NEGATIVE = -1;
 
+const MAX_VALUE_NUMBER = 99999;
+const MIN_VALUE_NUMBER = 0;
+const MAX_VALUE_BASE = 100000;
+
 const CHAR_NEGATIVE = 45;
 
 const PROPS_ZERO: BigDecimalProps = {
@@ -124,6 +128,10 @@ export class BigDecimal {
     return thisAbs.greaterThan(numberAbs)
       ? operationMinus(thisAbs, numberAbs, SIGNED_NEGATIVE)
       : operationMinus(numberAbs, thisAbs, SIGNED_POSITIVE);
+  }
+
+  public multiply(value: BigDecimalValue): BigDecimal {
+    return operationMultiply(this, valueToBigDecimal(value));
   }
 
   public isNegative(): boolean {
@@ -409,7 +417,7 @@ function operationPlus(
   for (let i = 0; i < decimalsLength; i++) {
     const total = (decimals1[i] ?? 0) + (decimals2[i] ?? 0) + carry;
 
-    if (total > 99999) {
+    if (total > MAX_VALUE_NUMBER) {
       carry = 1;
       decimals.unshift(+String(total).slice(1));
     } else {
@@ -421,7 +429,7 @@ function operationPlus(
   for (let i = 0; i < integersLength; i++) {
     const total = (integers1[i] ?? 0) + (integers2[i] ?? 0) + carry;
 
-    if (total > 99999) {
+    if (total > MAX_VALUE_NUMBER) {
       carry = 1;
       integers.unshift(+String(total).slice(1));
     } else {
@@ -459,9 +467,9 @@ function operationMinus(
   for (let i = 0; i < decimalsLength; i++) {
     const total = (decimals1[i] ?? 0) - (decimals2[i] ?? 0) - carry;
 
-    if (total < 0) {
+    if (total < MIN_VALUE_NUMBER) {
       carry = 1;
-      decimals.unshift(100000 - Math.abs(total));
+      decimals.unshift(MAX_VALUE_BASE - Math.abs(total));
     } else {
       carry = 0;
       decimals.unshift(total);
@@ -471,9 +479,9 @@ function operationMinus(
   for (let i = 0; i < integersLength; i++) {
     const total = (integers1[i] ?? 0) - (integers2[i] ?? 0) - carry;
 
-    if (total < 0) {
+    if (total < MIN_VALUE_NUMBER) {
       carry = 1;
-      integers.unshift(100000 - Math.abs(total));
+      integers.unshift(MAX_VALUE_BASE - Math.abs(total));
     } else {
       carry = 0;
       integers.unshift(total);
@@ -485,4 +493,47 @@ function operationMinus(
     integers: normalizeIntegers(integers),
     signed
   });
+}
+
+function operationMultiply(bd1: BigDecimal, bd2: BigDecimal): BigDecimal {
+  if (bd1.isZero() || bd2.isZero()) return BigDecimal.zero();
+
+  const signed = (bd1.signed * bd2.signed) as Signed;
+
+  // 1. TRATAR COMO ARRAY CONTINUO (como en Double)
+  const totalDigits1 = bd1.integers.length + bd1.decimals.length;
+  const totalDigits2 = bd2.integers.length + bd2.decimals.length;
+
+  // Crear arrays completos (rellenar con ceros si es necesario)
+  const numbers1 = [...bd1.integers, ...bd1.decimals];
+  const numbers2 = [...bd2.integers, ...bd2.decimals];
+
+  // 2. CALCULAR POSICIÓN DEL PUNTO DECIMAL
+  const decimalPlaces1 = bd1.decimals.length;
+  const decimalPlaces2 = bd2.decimals.length;
+  const totalDecimalPlaces = decimalPlaces1 + decimalPlaces2;
+
+  // 3. MULTIPLICACIÓN NORMAL (igual que en Double)
+  let numbersTemp: number[] = Array(totalDigits1 + totalDigits2).fill(0);
+
+  for (let i = totalDigits2 - 1; i >= 0; i--) {
+    let carry = 0;
+    for (let j = totalDigits1 - 1; j >= 0; j--) {
+      const idx = i + j + 1;
+      const product = numbers2[i] * numbers1[j] + carry + numbersTemp[idx];
+      numbersTemp[idx] = product % MAX_VALUE_BASE;
+      carry = Math.floor(product / MAX_VALUE_BASE);
+    }
+    numbersTemp[i] += carry;
+  }
+
+  // 4. SEPARAR ENTEROS/DECIMALES BASADO EN PUNTO DECIMAL
+  const totalLength = numbersTemp.length;
+  const integerDigits = totalLength - totalDecimalPlaces;
+
+  const integers =
+    integerDigits > 0 ? numbersTemp.slice(0, integerDigits) : [0];
+  const decimals = numbersTemp.slice(integerDigits);
+
+  return BigDecimal.create({ integers, decimals, signed });
 }

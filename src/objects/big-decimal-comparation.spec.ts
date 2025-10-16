@@ -1,4 +1,4 @@
-import { BigDecimal, bigDecimal } from './decimal';
+import { BigDecimal, bigDecimal } from './big-decimal';
 
 describe('BigDecimal Class - Comparison Operations', () => {
   test('should verify zero successful', () => {

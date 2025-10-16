@@ -1,4 +1,4 @@
-import { bigDecimal } from './decimal';
+import { bigDecimal } from './big-decimal';
 
 describe('BigDecimal Class - Aritmethic Operations', () => {
   test('should resolve operation plus successful', () => {
@@ -54,5 +54,29 @@ describe('BigDecimal Class - Aritmethic Operations', () => {
 
     expect(bigDecimal(-25.2).minus(bigDecimal(-10)).data).toBe(-15.2);
     expect(bigDecimal(-6352.1).minus(bigDecimal(-964272)).data).toBe(957919.9);
+  });
+
+  test('should resolve operation multiply successful', () => {
+    expect(bigDecimal(0).multiply(0).data).toBe(0);
+    expect(bigDecimal(331.5).multiply(0).data).toBe(0);
+    expect(bigDecimal(0).multiply(10).data).toBe(0);
+    expect(bigDecimal(-9431.4).multiply(0).data).toBe(0);
+    expect(bigDecimal(0).multiply(-0.543).data).toBe(0);
+
+    expect(bigDecimal(10).multiply(2).data).toBe(20);
+    expect(bigDecimal(5).multiply(932).data).toBe(4660);
+
+    expect(bigDecimal(95780).multiply(3.5).data).toBe(335230);
+    expect(bigDecimal(3.25).multiply(741).data).toBe(2408.25);
+    expect(bigDecimal(12975.15).multiply(973.38).data).toBe(12629751.507);
+
+    expect(bigDecimal(-100).multiply(35).data).toBe(-3500);
+    expect(bigDecimal(4).multiply(-613).data).toBe(-2452);
+
+    expect(bigDecimal(95780).multiply(-3.5).data).toBe(-335230);
+    expect(bigDecimal(-3.25).multiply(741).data).toBe(-2408.25);
+    expect(bigDecimal(12975.15).multiply(-973.38).data).toBe(-12629751.507);
+
+    expect(bigDecimal(-200).multiply(-65).data).toBe(13000);
   });
 });
