@@ -4,19 +4,19 @@ export function round(number: number, precision = 0): number {
   return Math.round(number * _precision) / _precision;
 }
 
-export function roundCeil(number: number, precision = 0): number {
+export function ceil(number: number, precision = 0): number {
   const _precision = Math.pow(10, precision);
 
   return Math.ceil(number * _precision) / _precision;
 }
 
-export function roundFloor(number: number, precision = 0): number {
+export function floor(number: number, precision = 0): number {
   const _precision = Math.pow(10, precision);
 
   return Math.floor(number * _precision) / _precision;
 }
 
-export function roundHalfToEven(number: number, precision = 0): number {
+export function halfToEven(number: number, precision = 0): number {
   const _precision = Math.pow(10, precision);
 
   const numberAbsolute = Math.abs(number) * _precision;

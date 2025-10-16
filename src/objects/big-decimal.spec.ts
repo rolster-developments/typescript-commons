@@ -11,5 +11,7 @@ describe('Decimal Class - Creation and Basic Properties', () => {
     expect(bigDecimal(-62135).toString()).toBe('-62135');
 
     expect(bigDecimal(784532.0034).toString()).toBe('784532.0034');
+    expect(bigDecimal(0).toString()).toBe('0');
+    expect(bigDecimal(-0).toString()).toBe('0');
   });
 });

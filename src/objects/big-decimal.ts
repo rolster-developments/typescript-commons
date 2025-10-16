@@ -37,8 +37,8 @@ export class BigDecimal {
   protected constructor(value: BigDecimalValue | BigDecimal) {
     const props = bigDecimalPropsFromValue(value);
 
+    this.integers = props.integers.length ? props.integers : [0];
     this.signed = props.signed;
-    this.integers = props.integers;
     this.decimals = props.decimals;
   }
 
@@ -134,6 +134,28 @@ export class BigDecimal {
     return operationMultiply(this, valueToBigDecimal(value));
   }
 
+  public percentage(rate: number): BigDecimal {
+    return this.multiply(rate / 100);
+  }
+
+  public round(precision: number = 0): BigDecimal {
+    if (this.isZero()) {
+      return this.clone();
+    }
+
+    const _precision = Math.trunc(precision);
+
+    if (_precision === 0) {
+      return roundPrecisionIsZero(this);
+    }
+
+    if (_precision > 0 && !this.decimals.length) {
+      return this.clone();
+    }
+
+    return this.clone();
+  }
+
   public isNegative(): boolean {
     return this.signed === SIGNED_NEGATIVE;
   }
@@ -143,7 +165,11 @@ export class BigDecimal {
   }
 
   public isZero(): boolean {
-    return this.signed === SIGNED_NEUTRO;
+    return (
+      this.signed === SIGNED_NEUTRO &&
+      integersIsZero(this.integers) &&
+      !this.decimals.length
+    );
   }
 
   public equals(value: BigDecimalValue): boolean {
@@ -213,20 +239,26 @@ export function bigDecimal(value: BigDecimalValue = PROPS_ZERO): BigDecimal {
   return BigDecimal.create(value);
 }
 
+function integersIsZero(numbers: number[]): boolean {
+  return numbers.length === 1 && numbers[0] === 0;
+}
+
 function valueToBigDecimal(value: BigDecimalValue): BigDecimal {
   return value instanceof BigDecimal ? value : BigDecimal.create(value);
 }
 
-function numberStrToFragments(numbersStr: string): number[] {
-  const numbers = [];
+function numbersToChunks(numbers: string | number): number[] {
+  const numbersStr = String(numbers);
+
+  const _numbers = [];
 
   for (let i = numbersStr.length; i > 0; i -= SAFE_BASE_LOG) {
     const index = Math.max(0, i - SAFE_BASE_LOG);
 
-    numbers.unshift(+numbersStr.slice(index, i));
+    _numbers.unshift(+numbersStr.slice(index, i));
   }
 
-  return numbers;
+  return _numbers;
 }
 
 function numberToProps(signed: Signed, number: string): BigDecimalProps {
@@ -236,7 +268,7 @@ function numberToProps(signed: Signed, number: string): BigDecimalProps {
 
   const [integers, _decimals] = number.split('.');
 
-  const decimals = numberStrToFragments(_decimals || '');
+  const decimals = numbersToChunks(_decimals || '');
 
   if (decimals.length) {
     const padZeroLength =
@@ -249,7 +281,7 @@ function numberToProps(signed: Signed, number: string): BigDecimalProps {
 
   return {
     decimals,
-    integers: numberStrToFragments(integers),
+    integers: numbersToChunks(integers),
     signed
   };
 }
@@ -393,147 +425,156 @@ function normalizeIntegers(numbers: number[]): number[] {
   return _numbers;
 }
 
-function operationPlus(
-  number1: BigDecimal,
-  number2: BigDecimal,
-  signed: Signed
-): BigDecimal {
-  const integers1 = number1.integers.reverse();
-  const integers2 = number2.integers.reverse();
+function plusNumbers(n1: number[], n2: number[], carry = 0) {
+  n1 = n1.reverse();
+  n2 = n2.reverse();
 
-  const decimals1 = number1.decimals.reverse();
-  const decimals2 = number2.decimals.reverse();
+  const length = n1.length > n2.length ? n1.length : n2.length;
 
-  const integersLength =
-    integers1.length > integers2.length ? integers1.length : integers2.length;
+  const numbers: number[] = [];
 
-  const decimalsLength =
-    decimals1.length > decimals2.length ? decimals1.length : decimals2.length;
-
-  const integers: number[] = [];
-  const decimals: number[] = [];
-  let carry = 0;
-
-  for (let i = 0; i < decimalsLength; i++) {
-    const total = (decimals1[i] ?? 0) + (decimals2[i] ?? 0) + carry;
+  for (let i = 0; i < length; i++) {
+    const total = (n1[i] ?? 0) + (n2[i] ?? 0) + carry;
 
     if (total > MAX_VALUE_NUMBER) {
       carry = 1;
-      decimals.unshift(+String(total).slice(1));
+      numbers.unshift(+String(total).slice(1));
     } else {
       carry = 0;
-      decimals.unshift(total);
+      numbers.unshift(total);
     }
   }
 
-  for (let i = 0; i < integersLength; i++) {
-    const total = (integers1[i] ?? 0) + (integers2[i] ?? 0) + carry;
-
-    if (total > MAX_VALUE_NUMBER) {
-      carry = 1;
-      integers.unshift(+String(total).slice(1));
-    } else {
-      carry = 0;
-      integers.unshift(total);
-    }
-  }
-
-  carry > 0 && integers.unshift(carry);
-
-  return BigDecimal.create({ decimals, integers, signed });
+  return { carry, numbers };
 }
 
-function operationMinus(
-  number1: BigDecimal,
-  number2: BigDecimal,
+function minusNumbers(numbers1: number[], numbers2: number[], carry = 0) {
+  numbers1 = numbers1.reverse();
+  numbers2 = numbers2.reverse();
+
+  const length =
+    numbers1.length > numbers2.length ? numbers1.length : numbers2.length;
+
+  const numbers: number[] = [];
+
+  for (let i = 0; i < length; i++) {
+    const total = (numbers1[i] ?? 0) - (numbers2[i] ?? 0) - carry;
+
+    if (total < MIN_VALUE_NUMBER) {
+      carry = 1;
+      numbers.unshift(MAX_VALUE_BASE - Math.abs(total));
+    } else {
+      carry = 0;
+      numbers.unshift(total);
+    }
+  }
+
+  return { carry, numbers };
+}
+
+function operationPlus(
+  bd1: BigDecimal,
+  bd2: BigDecimal,
   signed: Signed
 ): BigDecimal {
-  const integers1 = number1.integers.reverse();
-  const integers2 = number2.integers.reverse();
+  const decimals = plusNumbers(bd1.decimals, bd2.decimals);
+  const integers = plusNumbers(bd1.integers, bd2.integers, decimals.carry);
 
-  const decimals1 = number1.decimals.reverse();
-  const decimals2 = number2.decimals.reverse();
-
-  const integersLength =
-    integers1.length > integers2.length ? integers1.length : integers2.length;
-
-  const decimalsLength =
-    decimals1.length > decimals2.length ? decimals1.length : decimals2.length;
-
-  const integers: number[] = [];
-  const decimals: number[] = [];
-  let carry = 0;
-
-  for (let i = 0; i < decimalsLength; i++) {
-    const total = (decimals1[i] ?? 0) - (decimals2[i] ?? 0) - carry;
-
-    if (total < MIN_VALUE_NUMBER) {
-      carry = 1;
-      decimals.unshift(MAX_VALUE_BASE - Math.abs(total));
-    } else {
-      carry = 0;
-      decimals.unshift(total);
-    }
-  }
-
-  for (let i = 0; i < integersLength; i++) {
-    const total = (integers1[i] ?? 0) - (integers2[i] ?? 0) - carry;
-
-    if (total < MIN_VALUE_NUMBER) {
-      carry = 1;
-      integers.unshift(MAX_VALUE_BASE - Math.abs(total));
-    } else {
-      carry = 0;
-      integers.unshift(total);
-    }
-  }
+  integers.carry > 0 && integers.numbers.unshift(integers.carry);
 
   return BigDecimal.create({
-    decimals,
-    integers: normalizeIntegers(integers),
+    decimals: decimals.numbers,
+    integers: integers.numbers,
     signed
   });
 }
 
-function operationMultiply(bd1: BigDecimal, bd2: BigDecimal): BigDecimal {
-  if (bd1.isZero() || bd2.isZero()) return BigDecimal.zero();
+function operationMinus(
+  bd1: BigDecimal,
+  bd2: BigDecimal,
+  signed: Signed
+): BigDecimal {
+  const decimals = minusNumbers(bd1.decimals, bd2.decimals);
+  const integers = minusNumbers(bd1.integers, bd2.integers, decimals.carry);
 
-  const signed = (bd1.signed * bd2.signed) as Signed;
+  return BigDecimal.create({
+    decimals: decimals.numbers,
+    integers: normalizeIntegers(integers.numbers),
+    signed
+  });
+}
 
-  // 1. TRATAR COMO ARRAY CONTINUO (como en Double)
-  const totalDigits1 = bd1.integers.length + bd1.decimals.length;
-  const totalDigits2 = bd2.integers.length + bd2.decimals.length;
-
-  // Crear arrays completos (rellenar con ceros si es necesario)
-  const numbers1 = [...bd1.integers, ...bd1.decimals];
-  const numbers2 = [...bd2.integers, ...bd2.decimals];
-
-  // 2. CALCULAR POSICIÓN DEL PUNTO DECIMAL
-  const decimalPlaces1 = bd1.decimals.length;
-  const decimalPlaces2 = bd2.decimals.length;
-  const totalDecimalPlaces = decimalPlaces1 + decimalPlaces2;
-
-  // 3. MULTIPLICACIÓN NORMAL (igual que en Double)
-  let numbersTemp: number[] = Array(totalDigits1 + totalDigits2).fill(0);
-
-  for (let i = totalDigits2 - 1; i >= 0; i--) {
-    let carry = 0;
-    for (let j = totalDigits1 - 1; j >= 0; j--) {
-      const idx = i + j + 1;
-      const product = numbers2[i] * numbers1[j] + carry + numbersTemp[idx];
-      numbersTemp[idx] = product % MAX_VALUE_BASE;
-      carry = Math.floor(product / MAX_VALUE_BASE);
-    }
-    numbersTemp[i] += carry;
+function operationMultiply(
+  number1: BigDecimal,
+  number2: BigDecimal
+): BigDecimal {
+  if (number1.isZero() || number2.isZero()) {
+    return BigDecimal.zero();
   }
 
-  // 4. SEPARAR ENTEROS/DECIMALES BASADO EN PUNTO DECIMAL
-  const totalLength = numbersTemp.length;
-  const integerDigits = totalLength - totalDecimalPlaces;
+  const signed = (number1.signed * number2.signed) as Signed;
 
-  const integers =
-    integerDigits > 0 ? numbersTemp.slice(0, integerDigits) : [0];
-  const decimals = numbersTemp.slice(integerDigits);
+  const length1 = number1.integers.length + number1.decimals.length;
+  const length2 = number2.integers.length + number2.decimals.length;
+
+  const numbers1 = [...number1.integers, ...number1.decimals];
+  const numbers2 = [...number2.integers, ...number2.decimals];
+
+  const places1 = number1.decimals.length;
+  const places2 = number2.decimals.length;
+  const placesTotal = places1 + places2;
+
+  let _numbers: number[] = Array(length1 + length2).fill(0);
+
+  for (let i = length2 - 1; i >= 0; i--) {
+    let carry = 0;
+
+    for (let j = length1 - 1; j >= 0; j--) {
+      const idx = i + j + 1;
+      const product = numbers2[i] * numbers1[j] + carry + _numbers[idx];
+      _numbers[idx] = product % MAX_VALUE_BASE;
+      carry = Math.floor(product / MAX_VALUE_BASE);
+    }
+
+    _numbers[i] += carry;
+  }
+
+  const integerIndex = _numbers.length - placesTotal;
+
+  const integers = integerIndex > 0 ? _numbers.slice(0, integerIndex) : [0];
+  const decimals = _numbers.slice(integerIndex);
 
   return BigDecimal.create({ integers, decimals, signed });
+}
+
+function removeZerosInDecimals(decimals: number[]): void {
+  while (decimals.length > 0 && decimals[decimals.length - 1] === 0) {
+    decimals.pop();
+  }
+}
+
+function roundPrecisionIsZero(number: BigDecimal) {
+  if (number.decimals.length === 0) {
+    return number.clone();
+  }
+
+  const decimalIsUpper = number.decimals[0] >= 50000;
+
+  if (!decimalIsUpper) {
+    return BigDecimal.create({
+      integers: [...number.integers],
+      decimals: [],
+      signed: integersIsZero(number.integers) ? SIGNED_NEUTRO : number.signed
+    });
+  }
+
+  const result = plusNumbers(number.integers, [1]);
+
+  result.carry > 0 && result.numbers.unshift(result.carry);
+
+  return BigDecimal.create({
+    integers: result.numbers,
+    decimals: [],
+    signed: number.signed
+  });
 }
