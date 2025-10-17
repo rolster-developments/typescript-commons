@@ -19,19 +19,19 @@ export function floor(number: number, precision = 0): number {
 export function halfToEven(number: number, precision = 0): number {
   const _precision = Math.pow(10, precision);
 
-  const numberAbsolute = Math.abs(number) * _precision;
+  const _number = Math.abs(number) * _precision;
 
-  const integerPart = Math.trunc(numberAbsolute);
-  const decimalPart = numberAbsolute - integerPart;
+  const integer = Math.trunc(_number);
+  const decimal = _number - integer;
 
   let result;
 
-  if (decimalPart < 0.5) {
-    result = integerPart;
-  } else if (decimalPart > 0.5) {
-    result = integerPart + 1;
+  if (decimal < 0.5) {
+    result = integer;
+  } else if (decimal > 0.5) {
+    result = integer + 1;
   } else {
-    result = integerPart + (integerPart % 2);
+    result = integer + (integer % 2);
   }
 
   return (number < 0 ? -result : result) / _precision;

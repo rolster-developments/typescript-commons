@@ -8,6 +8,8 @@ interface BigDecimalProps {
 
 type BigDecimalValue = string | number | BigDecimalProps;
 
+type RoundMode = 'round' | 'ceil' | 'floor' | 'half-to-even';
+
 const SAFE_REGEX = /^(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i;
 const SAFE_BASE_LOG = 5;
 
@@ -17,6 +19,7 @@ const SIGNED_NEGATIVE = -1;
 
 const MAX_VALUE_NUMBER = 99999;
 const MIN_VALUE_NUMBER = 0;
+const MED_VALUE_NUMBER = 50000;
 const MAX_VALUE_BASE = 100000;
 
 const CHAR_NEGATIVE = 45;
@@ -138,22 +141,28 @@ export class BigDecimal {
     return this.multiply(rate / 100);
   }
 
-  public round(precision: number = 0): BigDecimal {
-    if (this.isZero()) {
-      return this.clone();
-    }
+  public round(precision = 0): BigDecimal {
+    return this.isZero()
+      ? this.clone()
+      : roundPrecision(this, precision, 'round');
+  }
 
-    const _precision = Math.trunc(precision);
+  public ceil(precision = 0): BigDecimal {
+    return this.isZero()
+      ? this.clone()
+      : roundPrecision(this, precision, 'ceil');
+  }
 
-    if (_precision === 0) {
-      return roundPrecisionIsZero(this);
-    }
+  public floor(precision = 0): BigDecimal {
+    return this.isZero()
+      ? this.clone()
+      : roundPrecision(this, precision, 'floor');
+  }
 
-    if (_precision > 0 && !this.decimals.length) {
-      return this.clone();
-    }
-
-    return this.clone();
+  public halfToEven(precision = 0): BigDecimal {
+    return this.isZero()
+      ? this.clone()
+      : roundPrecision(this, precision, 'half-to-even');
   }
 
   public isNegative(): boolean {
@@ -247,18 +256,61 @@ function valueToBigDecimal(value: BigDecimalValue): BigDecimal {
   return value instanceof BigDecimal ? value : BigDecimal.create(value);
 }
 
-function numbersToChunks(numbers: string | number): number[] {
-  const numbersStr = String(numbers);
+function integersToChunks(integers: string | number): number[] {
+  integers = String(integers);
 
-  const _numbers = [];
+  const _integers = [];
 
-  for (let i = numbersStr.length; i > 0; i -= SAFE_BASE_LOG) {
+  for (let i = integers.length; i > 0; i -= SAFE_BASE_LOG) {
     const index = Math.max(0, i - SAFE_BASE_LOG);
 
-    _numbers.unshift(+numbersStr.slice(index, i));
+    _integers.unshift(+integers.slice(index, i));
   }
 
-  return _numbers;
+  return _integers;
+}
+
+function removeZerosInDecimals(decimals: number[]): void {
+  while (decimals.length > 0 && decimals[decimals.length - 1] === 0) {
+    decimals.pop();
+  }
+}
+
+function decimalsBaseToChunks(decimals: string): number[] {
+  if (!decimals.length) {
+    return [];
+  }
+
+  if (decimals.length <= SAFE_BASE_LOG) {
+    return [+decimals];
+  }
+
+  const _decimals = [];
+
+  for (let i = 0; i < decimals.length; i += SAFE_BASE_LOG) {
+    _decimals.push(+decimals.slice(i, i + SAFE_BASE_LOG));
+  }
+
+  removeZerosInDecimals(_decimals);
+
+  return _decimals;
+}
+
+function decimalsToChunks(decimals: string | number): number[] {
+  decimals = String(decimals).slice(0, 15);
+
+  const _decimals = decimalsBaseToChunks(decimals);
+
+  if (_decimals.length === 1) {
+    const padZeroLength =
+      decimals.length > SAFE_BASE_LOG ? 0 : SAFE_BASE_LOG - decimals.length;
+
+    const decimal = String(_decimals[0]);
+
+    _decimals[0] = +decimal.padEnd(decimal.length + padZeroLength, '0');
+  }
+
+  return _decimals;
 }
 
 function numberToProps(signed: Signed, number: string): BigDecimalProps {
@@ -268,20 +320,11 @@ function numberToProps(signed: Signed, number: string): BigDecimalProps {
 
   const [integers, _decimals] = number.split('.');
 
-  const decimals = numbersToChunks(_decimals || '');
-
-  if (decimals.length) {
-    const padZeroLength =
-      _decimals.length > SAFE_BASE_LOG ? 0 : SAFE_BASE_LOG - _decimals.length;
-
-    const decimal = String(decimals[0]);
-
-    decimals[0] = +decimal.padEnd(decimal.length + padZeroLength, '0');
-  }
+  const decimals = decimalsToChunks(_decimals || '');
 
   return {
     decimals,
-    integers: numbersToChunks(integers),
+    integers: integersToChunks(integers),
     signed
   };
 }
@@ -339,7 +382,13 @@ function bigDecimalPropsFromValue(
     return bigDecimalFromString(value);
   }
 
-  return value;
+  return {
+    ...value,
+    signed:
+      !value.decimals.length && integersIsZero(value.integers)
+        ? SIGNED_NEUTRO
+        : value.signed
+  };
 }
 
 function bigDecimalToString(number: BigDecimal): string {
@@ -425,16 +474,17 @@ function normalizeIntegers(numbers: number[]): number[] {
   return _numbers;
 }
 
-function plusNumbers(n1: number[], n2: number[], carry = 0) {
-  n1 = n1.reverse();
-  n2 = n2.reverse();
+function plusNumbers(number1: number[], number2: number[], carry = 0) {
+  number1 = number1.reverse();
+  number2 = number2.reverse();
 
-  const length = n1.length > n2.length ? n1.length : n2.length;
+  const length =
+    number1.length > number2.length ? number1.length : number2.length;
 
   const numbers: number[] = [];
 
   for (let i = 0; i < length; i++) {
-    const total = (n1[i] ?? 0) + (n2[i] ?? 0) + carry;
+    const total = (number1[i] ?? 0) + (number2[i] ?? 0) + carry;
 
     if (total > MAX_VALUE_NUMBER) {
       carry = 1;
@@ -446,6 +496,14 @@ function plusNumbers(n1: number[], n2: number[], carry = 0) {
   }
 
   return { carry, numbers };
+}
+
+function plusNumbersOnCarry(number1: number[], number2: number[], carry = 0) {
+  const result = plusNumbers(number1, number2, carry);
+
+  result.carry > 0 && result.numbers.unshift(result.carry);
+
+  return result.numbers;
 }
 
 function minusNumbers(numbers1: number[], numbers2: number[], carry = 0) {
@@ -477,16 +535,11 @@ function operationPlus(
   bd2: BigDecimal,
   signed: Signed
 ): BigDecimal {
-  const decimals = plusNumbers(bd1.decimals, bd2.decimals);
-  const integers = plusNumbers(bd1.integers, bd2.integers, decimals.carry);
+  const { carry, numbers } = plusNumbers(bd1.decimals, bd2.decimals);
 
-  integers.carry > 0 && integers.numbers.unshift(integers.carry);
+  const integers = plusNumbersOnCarry(bd1.integers, bd2.integers, carry);
 
-  return BigDecimal.create({
-    decimals: decimals.numbers,
-    integers: integers.numbers,
-    signed
-  });
+  return BigDecimal.create({ decimals: numbers, integers, signed });
 }
 
 function operationMinus(
@@ -544,27 +597,44 @@ function operationMultiply(
   const integers = integerIndex > 0 ? _numbers.slice(0, integerIndex) : [0];
   const decimals = _numbers.slice(integerIndex);
 
-  return BigDecimal.create({ integers, decimals, signed });
+  return BigDecimal.create({ decimals, integers, signed });
 }
 
-function removeZerosInDecimals(decimals: number[]): void {
-  while (decimals.length > 0 && decimals[decimals.length - 1] === 0) {
-    decimals.pop();
+function precisionUpper(
+  mode: RoundMode,
+  integer: number,
+  decimal: number,
+  comparator: number
+): boolean {
+  switch (mode) {
+    case 'round':
+      return decimal >= comparator;
+    case 'half-to-even':
+      return decimal > comparator || integer % 2 !== 0;
+    case 'ceil':
+      return true;
+    default:
+      return false;
   }
 }
 
-function roundPrecisionIsZero(number: BigDecimal) {
+function roundPrecisionZero(number: BigDecimal, mode: RoundMode): BigDecimal {
   if (number.decimals.length === 0) {
     return number.clone();
   }
 
-  const decimalIsUpper = number.decimals[0] >= 50000;
+  const precisionIsUpper = precisionUpper(
+    mode,
+    number.integers[0],
+    number.decimals[0],
+    MED_VALUE_NUMBER
+  );
 
-  if (!decimalIsUpper) {
+  if (!precisionIsUpper) {
     return BigDecimal.create({
-      integers: [...number.integers],
       decimals: [],
-      signed: integersIsZero(number.integers) ? SIGNED_NEUTRO : number.signed
+      integers: [...number.integers],
+      signed: number.signed
     });
   }
 
@@ -573,8 +643,109 @@ function roundPrecisionIsZero(number: BigDecimal) {
   result.carry > 0 && result.numbers.unshift(result.carry);
 
   return BigDecimal.create({
-    integers: result.numbers,
     decimals: [],
+    integers: result.numbers,
     signed: number.signed
   });
+}
+
+function roundPrecisionPositive(
+  number: BigDecimal,
+  precision: number,
+  mode: RoundMode
+): BigDecimal {
+  const decimalsStr = number.decimals.reduce((total, decimals, index) => {
+    return (total +=
+      index === 0
+        ? String(decimals).padStart(SAFE_BASE_LOG, '0')
+        : String(decimals));
+  }, '');
+
+  if (decimalsStr.length <= precision) {
+    return number.clone();
+  }
+
+  const decimals = decimalsToChunks(decimalsStr.slice(0, precision));
+
+  const decimalLimit = +decimalsStr[precision - 1];
+  const decimalUpper = +decimalsStr[precision];
+
+  const precisionIsUpper = precisionUpper(mode, decimalLimit, decimalUpper, 5);
+
+  if (!precisionIsUpper) {
+    return BigDecimal.create({
+      decimals,
+      integers: [...number.integers],
+      signed: number.signed
+    });
+  }
+
+  const decimalsCarry = decimalsToChunks('1'.padStart(precision, '0'));
+  const resultPlus = plusNumbers(decimals, decimalsCarry);
+
+  const integers =
+    resultPlus.carry > 0
+      ? plusNumbersOnCarry(number.integers, [1])
+      : [...number.integers];
+
+  return BigDecimal.create({
+    decimals: resultPlus.numbers,
+    integers,
+    signed: number.signed
+  });
+}
+
+function roundPrecisionNegative(
+  number: BigDecimal,
+  precision: number,
+  mode: RoundMode
+): BigDecimal {
+  const integersStr = number.integers.reduce((total, integers) => {
+    return (total += String(integers));
+  }, '');
+
+  if (integersStr.length <= precision) {
+    return BigDecimal.zero();
+  }
+
+  const upper = integersStr.length - precision;
+  const limit = upper - 1;
+
+  let integers = integersToChunks(
+    integersStr.slice(0, upper).padEnd(integersStr.length, '0')
+  );
+
+  const integerLimit = +integersStr[limit];
+  const integerUpper = +integersStr[upper];
+
+  const precisionIsUpper = precisionUpper(mode, integerLimit, integerUpper, 5);
+
+  if (precisionIsUpper) {
+    const carry = integersToChunks('1'.padEnd(precision + 1, '0'));
+    integers = plusNumbersOnCarry(integers, carry);
+  }
+
+  return BigDecimal.create({
+    decimals: [],
+    integers,
+    signed: number.signed
+  });
+}
+
+function roundPrecision(
+  number: BigDecimal,
+  precision: number,
+  mode: RoundMode
+): BigDecimal {
+  const _precision = Math.trunc(precision);
+
+  if (_precision === 0) {
+    return roundPrecisionZero(number, mode);
+  }
+
+  if (_precision > 0) {
+    return roundPrecisionPositive(number, _precision, mode);
+  }
+
+  return roundPrecisionNegative(number, Math.abs(_precision), mode);
 }
