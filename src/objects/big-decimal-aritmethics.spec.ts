@@ -78,5 +78,19 @@ describe('BigDecimal Class - Aritmethic Operations', () => {
     expect(bigDecimal(12975.15).multiply(-973.38).data).toBe(-12629751.507);
 
     expect(bigDecimal(-200).multiply(-65).data).toBe(13000);
+
+    expect(bigDecimal(123.456).multiply(789.123).data).toBe(97421.969088);
+    expect(bigDecimal(999.999).multiply(999.999).data).toBe(999998.000001);
+    expect(bigDecimal(0.001).multiply(0.001).data).toBe(0.000001);
+    expect(bigDecimal(-456.789).multiply(123.456).data).toBe(-56393.342784);
+    expect(bigDecimal(-123.456).multiply(-789.123).data).toBe(97421.969088);
+    expect(bigDecimal(1.0).multiply(2.0).data).toBe(2);
+    expect(bigDecimal(1.5).multiply(2).data).toBe(3);
+    expect(bigDecimal(0.01).multiply(0.1).data).toBe(0.001);
+    expect(bigDecimal(3.0103).multiply(0.25).data).toBe(0.752575);
+    expect(bigDecimal(0.25).multiply(1000000).data).toBe(250000);
+    expect(bigDecimal(0.00001).multiply(1000000).data).toBe(10);
+    expect(bigDecimal(0.000001).multiply(1040000).data).toBe(1.04);
+    expect(bigDecimal(0.000001).multiply(1000000).data).toBe(1);
   });
 });

@@ -19,7 +19,6 @@ const SIGNED_NEGATIVE = -1;
 
 const MAX_VALUE_NUMBER = 99999;
 const MIN_VALUE_NUMBER = 0;
-const MED_VALUE_NUMBER = 50000;
 const MAX_VALUE_BASE = 100000;
 
 const CHAR_NEGATIVE = 45;
@@ -256,6 +255,16 @@ function valueToBigDecimal(value: BigDecimalValue): BigDecimal {
   return value instanceof BigDecimal ? value : BigDecimal.create(value);
 }
 
+function removeZerosInIntegers(integers: number[]): number[] {
+  if (integersIsZero(integers)) {
+    return integers;
+  }
+
+  const firstNonZero = integers.findIndex((integer) => integer !== 0);
+
+  return firstNonZero === -1 ? [] : integers.slice(firstNonZero);
+}
+
 function integersToChunks(integers: string | number): number[] {
   integers = String(integers);
 
@@ -270,25 +279,37 @@ function integersToChunks(integers: string | number): number[] {
   return _integers;
 }
 
-function removeZerosInDecimals(decimals: number[]): void {
+function removeZerosInDecimals(decimals: number[]): number[] {
   while (decimals.length > 0 && decimals[decimals.length - 1] === 0) {
     decimals.pop();
   }
+
+  return decimals;
 }
 
-function decimalsBaseToChunks(decimals: string): number[] {
+function formatDecimal(decimal: string): string {
+  const padZeroLength =
+    decimal.length >= SAFE_BASE_LOG ? 0 : SAFE_BASE_LOG - decimal.length;
+
+  return decimal.padEnd(decimal.length + padZeroLength, '0');
+}
+
+function decimalsToChunks(decimals: string | number): number[] {
+  decimals = String(decimals).slice(0, 15);
   if (!decimals.length) {
     return [];
   }
 
   if (decimals.length <= SAFE_BASE_LOG) {
-    return [+decimals];
+    return [+formatDecimal(decimals)];
   }
 
   const _decimals = [];
 
   for (let i = 0; i < decimals.length; i += SAFE_BASE_LOG) {
-    _decimals.push(+decimals.slice(i, i + SAFE_BASE_LOG));
+    const decimal = decimals.slice(i, i + SAFE_BASE_LOG);
+
+    _decimals.push(+formatDecimal(decimal));
   }
 
   removeZerosInDecimals(_decimals);
@@ -296,21 +317,25 @@ function decimalsBaseToChunks(decimals: string): number[] {
   return _decimals;
 }
 
-function decimalsToChunks(decimals: string | number): number[] {
-  decimals = String(decimals).slice(0, 15);
+function decimalsToString(decimals: number[]): string {
+  return decimals.reduce((total, decimals, index) => {
+    return (total +=
+      index === 0
+        ? String(decimals).padStart(SAFE_BASE_LOG, '0')
+        : String(decimals));
+  }, '');
+}
 
-  const _decimals = decimalsBaseToChunks(decimals);
+function numberToChunks(number: string): string[] {
+  if (/e-/.test(number)) {
+    const [int, dec] = number.split('e-');
 
-  if (_decimals.length === 1) {
-    const padZeroLength =
-      decimals.length > SAFE_BASE_LOG ? 0 : SAFE_BASE_LOG - decimals.length;
+    const count = +dec + int.length - 1;
 
-    const decimal = String(_decimals[0]);
-
-    _decimals[0] = +decimal.padEnd(decimal.length + padZeroLength, '0');
+    return ['0', int.replace('.', '').padStart(count, '0')];
   }
 
-  return _decimals;
+  return number.split('.');
 }
 
 function numberToProps(signed: Signed, number: string): BigDecimalProps {
@@ -318,7 +343,7 @@ function numberToProps(signed: Signed, number: string): BigDecimalProps {
     return PROPS_ZERO;
   }
 
-  const [integers, _decimals] = number.split('.');
+  const [integers, _decimals] = numberToChunks(number);
 
   const decimals = decimalsToChunks(_decimals || '');
 
@@ -573,29 +598,35 @@ function operationMultiply(
   const numbers1 = [...number1.integers, ...number1.decimals];
   const numbers2 = [...number2.integers, ...number2.decimals];
 
-  const places1 = number1.decimals.length;
-  const places2 = number2.decimals.length;
-  const placesTotal = places1 + places2;
-
   let _numbers: number[] = Array(length1 + length2).fill(0);
 
   for (let i = length2 - 1; i >= 0; i--) {
     let carry = 0;
 
     for (let j = length1 - 1; j >= 0; j--) {
-      const idx = i + j + 1;
-      const product = numbers2[i] * numbers1[j] + carry + _numbers[idx];
-      _numbers[idx] = product % MAX_VALUE_BASE;
-      carry = Math.floor(product / MAX_VALUE_BASE);
+      const position = i + j + 1;
+
+      const result = numbers2[i] * numbers1[j] + carry + _numbers[position];
+
+      _numbers[position] = result % MAX_VALUE_BASE;
+
+      carry = Math.floor(result / MAX_VALUE_BASE);
     }
 
     _numbers[i] += carry;
   }
 
+  const places1 = decimalsToString(number1.decimals).length;
+  const places2 = decimalsToString(number2.decimals).length;
+  const placesTotal = Math.ceil((places1 + places2) / SAFE_BASE_LOG);
+
   const integerIndex = _numbers.length - placesTotal;
 
-  const integers = integerIndex > 0 ? _numbers.slice(0, integerIndex) : [0];
-  const decimals = _numbers.slice(integerIndex);
+  const integers = removeZerosInIntegers(
+    integerIndex > 0 ? _numbers.slice(0, integerIndex) : [0]
+  );
+
+  const decimals = removeZerosInDecimals(_numbers.slice(integerIndex));
 
   return BigDecimal.create({ decimals, integers, signed });
 }
@@ -610,7 +641,9 @@ function precisionUpper(
     case 'round':
       return decimal >= comparator;
     case 'half-to-even':
-      return decimal > comparator || integer % 2 !== 0;
+      return decimal < comparator
+        ? false
+        : decimal > comparator || integer % 2 !== 0;
     case 'ceil':
       return true;
     default:
@@ -623,12 +656,11 @@ function roundPrecisionZero(number: BigDecimal, mode: RoundMode): BigDecimal {
     return number.clone();
   }
 
-  const precisionIsUpper = precisionUpper(
-    mode,
-    number.integers[0],
-    number.decimals[0],
-    MED_VALUE_NUMBER
-  );
+  const decimal = +String(number.decimals[0])
+    .padStart(SAFE_BASE_LOG, '0')
+    .charAt(0);
+
+  const precisionIsUpper = precisionUpper(mode, number.integers[0], decimal, 5);
 
   if (!precisionIsUpper) {
     return BigDecimal.create({
@@ -654,14 +686,9 @@ function roundPrecisionPositive(
   precision: number,
   mode: RoundMode
 ): BigDecimal {
-  const decimalsStr = number.decimals.reduce((total, decimals, index) => {
-    return (total +=
-      index === 0
-        ? String(decimals).padStart(SAFE_BASE_LOG, '0')
-        : String(decimals));
-  }, '');
+  const decimalsStr = decimalsToString(number.decimals);
 
-  if (decimalsStr.length <= precision) {
+  if (decimalsStr.replace(/0+$/, '').length <= precision) {
     return number.clone();
   }
 
