@@ -136,8 +136,12 @@ export class BigDecimal {
     return operationMultiply(this, valueToBigDecimal(value));
   }
 
+  public divide(value: BigDecimalValue, precision = 15): BigDecimal {
+    return operationDivide(this, valueToBigDecimal(value), precision);
+  }
+
   public percentage(rate: number): BigDecimal {
-    return this.multiply(rate / 100);
+    return this.multiply(rate).divide(100);
   }
 
   public round(precision = 0): BigDecimal {
@@ -287,6 +291,14 @@ function removeZerosInDecimals(decimals: number[]): number[] {
   return decimals;
 }
 
+function removeLeadingZeros(numberStr: string): string {
+  return numberStr.replace(/^0+/, '');
+}
+
+function removeTrailingZeros(numberStr: string): string {
+  return numberStr.replace(/0+$/, '');
+}
+
 function formatDecimal(decimal: string): string {
   const padZeroLength =
     decimal.length >= SAFE_BASE_LOG ? 0 : SAFE_BASE_LOG - decimal.length;
@@ -317,12 +329,18 @@ function decimalsToChunks(decimals: string | number): number[] {
   return _decimals;
 }
 
-function decimalsToString(decimals: number[]): string {
-  return decimals.reduce((total, decimals, index) => {
+function integersToString(integers: number[]): string {
+  return integers.reduce((total, integer, index) => {
     return (total +=
-      index === 0
-        ? String(decimals).padStart(SAFE_BASE_LOG, '0')
-        : String(decimals));
+      index !== 0
+        ? String(integer).padStart(SAFE_BASE_LOG, '0')
+        : String(integer));
+  }, '');
+}
+
+function decimalsToString(decimals: number[]): string {
+  return decimals.reduce((total, decimal) => {
+    return (total += String(decimal).padStart(SAFE_BASE_LOG, '0'));
   }, '');
 }
 
@@ -629,6 +647,84 @@ function operationMultiply(
   const decimals = removeZerosInDecimals(_numbers.slice(integerIndex));
 
   return BigDecimal.create({ decimals, integers, signed });
+}
+
+function operationDivide(
+  number1: BigDecimal,
+  number2: BigDecimal,
+  precision: number
+): BigDecimal {
+  if (number2.isZero()) {
+    throw new Error('[BigDecimalError] Division by zero');
+  }
+
+  if (number1.isZero()) {
+    return BigDecimal.zero();
+  }
+
+  const signed = (number1.signed * number2.signed) as Signed;
+
+  if (number1.equals(number2)) {
+    return BigDecimal.create(1);
+  }
+
+  if (number2.equals(1) || number2.equals(-1)) {
+    return BigDecimal.create({
+      decimals: [...number1.decimals],
+      integers: [...number1.integers],
+      signed
+    });
+  }
+
+  const decimalsStr1 = removeTrailingZeros(decimalsToString(number1.decimals));
+  const decimalsStr2 = removeTrailingZeros(decimalsToString(number2.decimals));
+
+  const integersStr1 = integersToString(number1.integers);
+  const integersStr2 = integersToString(number2.integers);
+
+  const numerator = integersStr1 + decimalsStr1;
+  const denominator = integersStr2 + decimalsStr2;
+
+  const length1 = decimalsStr1.length;
+  const length2 = decimalsStr2.length;
+
+  const _precision = numerator.length + precision + length2;
+  const _numerator = numerator.padEnd(_precision, '0');
+  const _denominador = +denominator;
+
+  let result = '';
+  let remainder = 0;
+
+  for (let i = 0; i < _numerator.length; i++) {
+    const digit = +_numerator[i];
+
+    const value = remainder * 10 + digit;
+
+    if (value < _denominador) {
+      result += '0';
+      remainder = value;
+    } else {
+      const quotient = Math.floor(value / _denominador);
+
+      result += quotient.toString();
+      remainder = value % _denominador;
+    }
+  }
+
+  result = result.slice(length2);
+  const point = result.length - (length1 + precision);
+
+  let integers = point <= 0 ? '0' : result.slice(0, point);
+  let decimals = point <= 0 ? '0'.repeat(-point) + result : result.slice(point);
+
+  integers = removeLeadingZeros(integers) || '0';
+  decimals = removeTrailingZeros(decimals);
+
+  return BigDecimal.create({
+    decimals: decimalsToChunks(decimals),
+    integers: integersToChunks(integers),
+    signed
+  });
 }
 
 function precisionUpper(

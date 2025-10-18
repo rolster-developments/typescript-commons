@@ -93,4 +93,38 @@ describe('BigDecimal Class - Aritmethic Operations', () => {
     expect(bigDecimal(0.000001).multiply(1040000).data).toBe(1.04);
     expect(bigDecimal(0.000001).multiply(1000000).data).toBe(1);
   });
+
+  test('should resolve operation divide successful', () => {
+    expect(bigDecimal(3.421).divide(3.421).data).toBe(1);
+    expect(bigDecimal(10).divide(2).data).toBe(5);
+    expect(bigDecimal(0).divide(10).data).toBe(0);
+    expect(bigDecimal(0).divide(5.25).data).toBe(0);
+    expect(bigDecimal(10).divide(10).data).toBe(1);
+    expect(bigDecimal(156.5).divide(2).data).toBe(78.25);
+
+    expect(bigDecimal(2062.5).divide(30.25).data).toBe(68.18181818181819);
+    expect(bigDecimal(20625).divide(3.025).data).toBe(6818.181818181818);
+    expect(bigDecimal(20625).divide(30.25).data).toBe(681.8181818181819);
+    expect(bigDecimal(20625).divide(302.5).data).toBe(68.18181818181819);
+    expect(bigDecimal(20625).divide(3025).data).toBe(6.8181818181818181);
+
+    expect(bigDecimal(-99999999999999).divide(11111111111111).data).toBe(-9);
+    expect(bigDecimal(-8).divide(2).data).toBe(-4);
+    expect(bigDecimal(-13).divide(2.5).data).toBe(-5.2);
+    expect(bigDecimal(0.5).divide(100).data).toBe(0.005);
+    expect(bigDecimal(1).divide(-97).data).toBe(-0.010309278350515);
+
+    expect(bigDecimal(1).divide(3).data).toBe(0.333333333333333);
+    expect(bigDecimal(12.345).divide(6.789).data).toBe(1.818382677861246);
+    expect(bigDecimal(0.001).divide(0.002).data).toBe(0.5);
+    expect(bigDecimal(123456.789).divide(987.654).data).toBe(
+      125.00003948751284
+    );
+    expect(bigDecimal(15.75).divide(-3.5).data).toBe(-4.5);
+  });
+
+  test('should resolve operation percentage successful', () => {
+    expect(bigDecimal(10000).percentage(19).data).toBe(1900);
+    expect(bigDecimal(2.57).percentage(50).data).toBe(1.285);
+  });
 });

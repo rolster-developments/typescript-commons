@@ -1,5 +1,5 @@
 import { Observer, observable } from '../objects/observable';
-import { SealedPartial, SealedState } from '../states/sealed';
+import { SealedPartial, SealedState } from '../results/sealed';
 
 interface StreamResponse<T> {
   response: T;
@@ -91,7 +91,7 @@ export function stream<T>(promise: Promise<T>): StreamSubscription<T> {
   };
 }
 
-export function streamResolver<T, V = any>(
+export function streamValue<T, V = any>(
   promise: Promise<T>
 ): StreamStateSubscription<T, V> {
   return {
