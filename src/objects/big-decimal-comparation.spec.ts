@@ -30,6 +30,18 @@ describe('BigDecimal Class - Comparison Operations', () => {
     expect(bigDecimal(-200).equals(-200)).toBe(true);
     expect(bigDecimal(-6.98).equals(-6.98)).toBe(true);
     expect(bigDecimal(-0.00829).equals(-0.00829)).toBe(true);
+
+    expect(
+      bigDecimal({ decimals: [0], integers: [41800], signed: 1 }).equals(
+        bigDecimal(41800)
+      )
+    ).toBe(true);
+
+    expect(
+      bigDecimal({ decimals: [0], integers: [0], signed: -1 }).equals(
+        bigDecimal(0)
+      )
+    ).toBe(true);
   });
 
   test('should greaterThan and greaterThanOrEqualTo numbers successful', () => {

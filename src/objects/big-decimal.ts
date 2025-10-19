@@ -446,7 +446,8 @@ function bigDecimalPropsFromValue(
   }
 
   return {
-    ...value,
+    decimals: removeZerosInDecimals(value.decimals),
+    integers: removeZerosInIntegers(value.integers),
     signed:
       !value.decimals.length && integersIsZero(value.integers)
         ? SIGNED_NEUTRO
