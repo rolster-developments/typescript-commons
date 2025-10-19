@@ -7,5 +7,5 @@
   },
   "files": ["node_modules/@rolster/types/index.d.ts"],
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.spec.ts"]
+  "exclude": ["src/**/*.spec.ts", "src/objects/double.ts"]
 }

@@ -10,6 +10,11 @@ type BigDecimalValue = string | number | BigDecimalProps;
 
 type RoundMode = 'round' | 'ceil' | 'floor' | 'half-to-even';
 
+interface RoundStrategy {
+  mode: RoundMode;
+  precision: number;
+}
+
 const SAFE_REGEX = /^(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i;
 const SAFE_BASE_LOG = 5;
 
@@ -29,6 +34,11 @@ const PROPS_ZERO: BigDecimalProps = {
   signed: 0
 };
 
+let _roundStrategy: RoundStrategy = {
+  mode: 'half-to-even',
+  precision: 2
+};
+
 export class BigDecimal {
   public readonly signed: Signed;
 
@@ -46,6 +56,12 @@ export class BigDecimal {
 
   public get data(): number {
     return +this;
+  }
+
+  public get rounded(): number {
+    const { mode, precision } = _roundStrategy;
+
+    return roundPrecision(this, precision, mode).data;
   }
 
   public abs(): BigDecimal {
@@ -249,6 +265,10 @@ export class BigDecimal {
 
 export function bigDecimal(value: BigDecimalValue = PROPS_ZERO): BigDecimal {
   return BigDecimal.create(value);
+}
+
+export function roundStrategy(strategy: RoundStrategy): void {
+  _roundStrategy = strategy;
 }
 
 function integersIsZero(numbers: number[]): boolean {

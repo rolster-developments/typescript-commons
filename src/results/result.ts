@@ -10,20 +10,14 @@ interface Failure<E> {
 
 export type Result<S, F = string> = Success<S> | Failure<F>;
 
-export class ResultPattern {
+export class ResultFactory {
   private constructor() {}
 
-  public static success<S>(value: S): Result<S, never> {
-    return {
-      isError: false,
-      value
-    };
+  public static success<S>(value: S): Readonly<Result<S, never>> {
+    return Object.freeze({ isError: false, value });
   }
 
-  public static failure<F>(error: F): Result<never, F> {
-    return {
-      isError: true,
-      value: error
-    };
+  public static failure<F>(error: F): Readonly<Result<never, F>> {
+    return Object.freeze({ isError: true, value: error });
   }
 }
