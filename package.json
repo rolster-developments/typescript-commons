@@ -1,6 +1,6 @@
 {
   "name": "@rolster/commons",
-  "version": "3.1.4",
+  "version": "3.1.5",
   "description": "Commons utilities package compatible with Typescript projects.",
   "module": "dist/esm/index.js",
   "main": "dist/cjs/index.js",

@@ -1,10 +1,10 @@
 interface Success<T> {
-  isError: false;
+  isSuccess: true;
   value: T;
 }
 
 interface Failure<E> {
-  isError: true;
+  isSuccess: false;
   value: E;
 }
 
@@ -14,10 +14,10 @@ export class ResultFactory {
   private constructor() {}
 
   public static success<S>(value: S): Readonly<Result<S, never>> {
-    return Object.freeze({ isError: false, value });
+    return Object.freeze({ isSuccess: true, value });
   }
 
   public static failure<F>(error: F): Readonly<Result<never, F>> {
-    return Object.freeze({ isError: true, value: error });
+    return Object.freeze({ isSuccess: false, value: error });
   }
 }
