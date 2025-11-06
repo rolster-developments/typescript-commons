@@ -5,6 +5,7 @@ describe('Decimal Class - Creation and Basic Properties', () => {
     expect(bigDecimal(20000000).data).toBe(20000000);
     expect(bigDecimal(2984).data).toBe(2984);
     expect(bigDecimal(14500).data).toBe(14500);
+    expect(bigDecimal(100000).data).toBe(100000);
 
     expect(bigDecimal(-1296833).data).toBe(-1296833);
     expect(bigDecimal(-733).data).toBe(-733);
@@ -16,6 +17,6 @@ describe('Decimal Class - Creation and Basic Properties', () => {
     expect(bigDecimal(0).data).toBe(0);
     expect(bigDecimal(-0).data).toBe(0);
     expect(bigDecimal(12.0388199223830001).data).toBe(12.0388199223830001);
-    expect(bigDecimal(5412.03881900000).data).toBe(5412.038819);
+    expect(bigDecimal(5412.038819).data).toBe(5412.038819);
   });
 });

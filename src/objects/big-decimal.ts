@@ -103,12 +103,12 @@ export class BigDecimal {
       return BigDecimal.zero();
     }
 
-    const thisAbs = this.abs();
-    const numberAbs = number.abs();
+    const _this = this.abs();
+    const _number = number.abs();
 
-    return thisAbs.greaterThan(numberAbs)
-      ? operationMinus(thisAbs, numberAbs, this.signed)
-      : operationMinus(numberAbs, thisAbs, number.signed);
+    return _this.greaterThan(_number)
+      ? operationMinus(_this, _number, this.signed)
+      : operationMinus(_number, _this, number.signed);
   }
 
   public minus(value: BigDecimalValue): BigDecimal {
@@ -126,26 +126,26 @@ export class BigDecimal {
       return this.clone();
     }
 
-    const thisAbs = this.abs();
-    const numberAbs = number.abs();
+    const _this = this.abs();
+    const _number = number.abs();
 
     if (this.isPositive() && number.isPositive()) {
-      return thisAbs.greaterThan(numberAbs)
-        ? operationMinus(thisAbs, numberAbs, SIGNED_POSITIVE)
-        : operationMinus(numberAbs, thisAbs, SIGNED_NEGATIVE);
+      return _this.greaterThan(_number)
+        ? operationMinus(_this, _number, SIGNED_POSITIVE)
+        : operationMinus(_number, _this, SIGNED_NEGATIVE);
     }
 
     if (this.isPositive() && number.isNegative()) {
-      return operationPlus(thisAbs, numberAbs, SIGNED_POSITIVE);
+      return operationPlus(_this, _number, SIGNED_POSITIVE);
     }
 
     if (this.isNegative() && number.isPositive()) {
-      return operationPlus(thisAbs, numberAbs, SIGNED_NEGATIVE);
+      return operationPlus(_this, _number, SIGNED_NEGATIVE);
     }
 
-    return thisAbs.greaterThan(numberAbs)
-      ? operationMinus(thisAbs, numberAbs, SIGNED_NEGATIVE)
-      : operationMinus(numberAbs, thisAbs, SIGNED_POSITIVE);
+    return _this.greaterThan(_number)
+      ? operationMinus(_this, _number, SIGNED_NEGATIVE)
+      : operationMinus(_number, _this, SIGNED_POSITIVE);
   }
 
   public multiply(value: BigDecimalValue): BigDecimal {
@@ -595,24 +595,36 @@ function minusNumbers(numbers1: number[], numbers2: number[], carry = 0) {
 }
 
 function operationPlus(
-  bd1: BigDecimal,
-  bd2: BigDecimal,
+  number1: BigDecimal,
+  number2: BigDecimal,
   signed: Signed
 ): BigDecimal {
-  const { carry, numbers } = plusNumbers(bd1.decimals, bd2.decimals);
+  const { carry, numbers } = plusNumbers(
+    [...number1.decimals],
+    [...number2.decimals]
+  );
 
-  const integers = plusNumbersOnCarry(bd1.integers, bd2.integers, carry);
+  const integers = plusNumbersOnCarry(
+    [...number1.integers],
+    [...number2.integers],
+    carry
+  );
 
   return BigDecimal.create({ decimals: numbers, integers, signed });
 }
 
 function operationMinus(
-  bd1: BigDecimal,
-  bd2: BigDecimal,
+  number1: BigDecimal,
+  number2: BigDecimal,
   signed: Signed
 ): BigDecimal {
-  const decimals = minusNumbers(bd1.decimals, bd2.decimals);
-  const integers = minusNumbers(bd1.integers, bd2.integers, decimals.carry);
+  const decimals = minusNumbers([...number1.decimals], [...number2.decimals]);
+
+  const integers = minusNumbers(
+    [...number1.integers],
+    [...number2.integers],
+    decimals.carry
+  );
 
   return BigDecimal.create({
     decimals: decimals.numbers,
@@ -697,11 +709,16 @@ function operationDivide(
     });
   }
 
-  const decimalsStr1 = removeTrailingZeros(decimalsToString(number1.decimals));
-  const decimalsStr2 = removeTrailingZeros(decimalsToString(number2.decimals));
+  const decimalsStr1 = removeTrailingZeros(
+    decimalsToString([...number1.decimals])
+  );
 
-  const integersStr1 = integersToString(number1.integers);
-  const integersStr2 = integersToString(number2.integers);
+  const decimalsStr2 = removeTrailingZeros(
+    decimalsToString([...number2.decimals])
+  );
+
+  const integersStr1 = integersToString([...number1.integers]);
+  const integersStr2 = integersToString([...number2.integers]);
 
   const numerator = integersStr1 + decimalsStr1;
   const denominator = integersStr2 + decimalsStr2;
