@@ -11,8 +11,8 @@ type BigDecimalValue = string | number | BigDecimalProps;
 type RoundMode = 'round' | 'ceil' | 'floor' | 'half-to-even';
 
 interface RoundStrategy {
-  mode: RoundMode;
   precision: number;
+  roundMode: RoundMode;
 }
 
 const SAFE_REGEX = /^(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i;
@@ -35,8 +35,8 @@ const PROPS_ZERO: BigDecimalProps = {
 };
 
 let _roundStrategy: RoundStrategy = {
-  mode: 'half-to-even',
-  precision: 2
+  precision: 2,
+  roundMode: 'half-to-even'
 };
 
 export class BigDecimal {
@@ -59,7 +59,7 @@ export class BigDecimal {
   }
 
   public get rounded(): number {
-    const { mode, precision } = _roundStrategy;
+    const { roundMode: mode, precision } = _roundStrategy;
 
     return roundPrecision(this, precision, mode).data;
   }
@@ -594,15 +594,34 @@ function minusNumbers(numbers1: number[], numbers2: number[], carry = 0) {
   return { carry, numbers };
 }
 
+type Decimals = [number[], number[]];
+
+function fillArrayDecimals(decimals1: number[], decimals2: number[]): Decimals {
+  const maxLength = Math.max(decimals1.length, decimals2.length);
+
+  const _decimals1 = [
+    ...decimals1,
+    ...Array(maxLength - decimals1.length).fill(0)
+  ];
+  const _decimals2 = [
+    ...decimals2,
+    ...Array(maxLength - decimals2.length).fill(0)
+  ];
+
+  return [_decimals1, _decimals2];
+}
+
 function operationPlus(
   number1: BigDecimal,
   number2: BigDecimal,
   signed: Signed
 ): BigDecimal {
-  const { carry, numbers } = plusNumbers(
-    [...number1.decimals],
-    [...number2.decimals]
+  const [decimals1, decimals2] = fillArrayDecimals(
+    number1.decimals,
+    number2.decimals
   );
+
+  const { carry, numbers } = plusNumbers(decimals1, decimals2);
 
   const integers = plusNumbersOnCarry(
     [...number1.integers],
@@ -618,7 +637,12 @@ function operationMinus(
   number2: BigDecimal,
   signed: Signed
 ): BigDecimal {
-  const decimals = minusNumbers([...number1.decimals], [...number2.decimals]);
+  const [decimals1, decimals2] = fillArrayDecimals(
+    number1.decimals,
+    number2.decimals
+  );
+
+  const decimals = minusNumbers(decimals1, decimals2);
 
   const integers = minusNumbers(
     [...number1.integers],
@@ -766,12 +790,12 @@ function operationDivide(
 }
 
 function precisionUpper(
-  mode: RoundMode,
+  roundMode: RoundMode,
   integer: number,
   decimal: number,
   comparator: number
 ): boolean {
-  switch (mode) {
+  switch (roundMode) {
     case 'round':
       return decimal >= comparator;
     case 'half-to-even':
@@ -785,7 +809,10 @@ function precisionUpper(
   }
 }
 
-function roundPrecisionZero(number: BigDecimal, mode: RoundMode): BigDecimal {
+function roundPrecisionZero(
+  number: BigDecimal,
+  roundMode: RoundMode
+): BigDecimal {
   if (number.decimals.length === 0) {
     return number.clone();
   }
@@ -794,7 +821,12 @@ function roundPrecisionZero(number: BigDecimal, mode: RoundMode): BigDecimal {
     .padStart(SAFE_BASE_LOG, '0')
     .charAt(0);
 
-  const precisionIsUpper = precisionUpper(mode, number.integers[0], decimal, 5);
+  const precisionIsUpper = precisionUpper(
+    roundMode,
+    number.integers[0],
+    decimal,
+    5
+  );
 
   if (!precisionIsUpper) {
     return BigDecimal.create({
@@ -818,7 +850,7 @@ function roundPrecisionZero(number: BigDecimal, mode: RoundMode): BigDecimal {
 function roundPrecisionPositive(
   number: BigDecimal,
   precision: number,
-  mode: RoundMode
+  roundMode: RoundMode
 ): BigDecimal {
   const decimalsStr = decimalsToString(number.decimals);
 
@@ -831,7 +863,12 @@ function roundPrecisionPositive(
   const decimalLimit = +decimalsStr[precision - 1];
   const decimalUpper = +decimalsStr[precision];
 
-  const precisionIsUpper = precisionUpper(mode, decimalLimit, decimalUpper, 5);
+  const precisionIsUpper = precisionUpper(
+    roundMode,
+    decimalLimit,
+    decimalUpper,
+    5
+  );
 
   if (!precisionIsUpper) {
     return BigDecimal.create({
@@ -859,7 +896,7 @@ function roundPrecisionPositive(
 function roundPrecisionNegative(
   number: BigDecimal,
   precision: number,
-  mode: RoundMode
+  roundMode: RoundMode
 ): BigDecimal {
   const integersStr = number.integers.reduce((total, integers) => {
     return (total += String(integers));
@@ -879,7 +916,12 @@ function roundPrecisionNegative(
   const integerLimit = +integersStr[limit];
   const integerUpper = +integersStr[upper];
 
-  const precisionIsUpper = precisionUpper(mode, integerLimit, integerUpper, 5);
+  const precisionIsUpper = precisionUpper(
+    roundMode,
+    integerLimit,
+    integerUpper,
+    5
+  );
 
   if (precisionIsUpper) {
     const carry = integersToChunks('1'.padEnd(precision + 1, '0'));
@@ -896,17 +938,17 @@ function roundPrecisionNegative(
 function roundPrecision(
   number: BigDecimal,
   precision: number,
-  mode: RoundMode
+  roundMode: RoundMode
 ): BigDecimal {
   const _precision = Math.trunc(precision);
 
   if (_precision === 0) {
-    return roundPrecisionZero(number, mode);
+    return roundPrecisionZero(number, roundMode);
   }
 
   if (_precision > 0) {
-    return roundPrecisionPositive(number, _precision, mode);
+    return roundPrecisionPositive(number, _precision, roundMode);
   }
 
-  return roundPrecisionNegative(number, Math.abs(_precision), mode);
+  return roundPrecisionNegative(number, Math.abs(_precision), roundMode);
 }

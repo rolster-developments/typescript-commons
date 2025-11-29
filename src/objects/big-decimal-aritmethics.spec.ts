@@ -28,6 +28,7 @@ describe('BigDecimal Class - Aritmethic Operations', () => {
     expect(bigDecimal(12).plus(bigDecimal(-74)).data).toBe(-62);
     expect(bigDecimal(2594).plus(bigDecimal(-2000)).data).toBe(594);
     expect(bigDecimal(-0.00031).plus(bigDecimal(23.76)).data).toBe(23.75969);
+    expect(bigDecimal(5042.016806722689).plus(957.98).data).toBe(5999.996806722689);
   });
 
   test('should resolve operation minus successful', () => {
@@ -54,6 +55,7 @@ describe('BigDecimal Class - Aritmethic Operations', () => {
 
     expect(bigDecimal(-25.2).minus(bigDecimal(-10)).data).toBe(-15.2);
     expect(bigDecimal(-6352.1).minus(bigDecimal(-964272)).data).toBe(957919.9);
+    expect(bigDecimal(5042.016806722689).minus(957.98).data).toBe(4084.036806722689);
   });
 
   test('should resolve operation multiply successful', () => {
