@@ -1,6 +1,6 @@
 type ZipPromiseFactory<T> = () => Promise<T>;
 
-type ZipPromiseFactories<T> = {
+type ZipPromises<T> = {
   [K in keyof T]: ZipPromiseFactory<T[K]>;
 };
 
@@ -10,16 +10,16 @@ interface ZipPromiseOptions {
 }
 
 export async function zipPromise<T extends any[]>(
-  factories: ZipPromiseFactories<T>,
+  promises: ZipPromises<T>,
   options: ZipPromiseOptions = {}
 ): Promise<T> {
   const { continueOnError = false, errorValue = undefined } = options;
 
   const results: unknown[] = [];
 
-  for (const factory of factories) {
+  for (const promise of promises) {
     try {
-      results.push(await factory());
+      results.push(await promise());
     } catch (error) {
       if (!continueOnError) {
         throw error;

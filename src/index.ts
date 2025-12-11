@@ -10,6 +10,7 @@ export * from './objects/observable';
 export * from './objects/queque';
 export * from './objects/secure-map';
 export * from './objects/scroller';
+export * from './promises/delay-promise';
 export * from './promises/secure-promise';
 export * from './promises/stream';
 export * from './promises/zip-promise';

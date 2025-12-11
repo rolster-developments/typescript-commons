@@ -3,9 +3,9 @@ interface Success<T> {
   value: T;
 }
 
-interface Failure<E> {
+interface Failure<F> {
   isSuccess: false;
-  value: E;
+  value: F;
 }
 
 export type Result<S, F = string> = Success<S> | Failure<F>;
