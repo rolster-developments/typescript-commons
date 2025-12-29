@@ -1,11 +1,11 @@
-type CriteriaKey = string | number | symbol;
-type CallbackCriteria = (key: CriteriaKey, value: any) => void;
+export type CriteriaKey = string | number | symbol;
+export type CriteriaCallback = (key: CriteriaKey, value: any) => void;
 
 export interface AbstractCriteria<
   T = any,
   O extends LiteralObject = LiteralObject
 > {
-  assign(callback: CallbackCriteria): void;
+  assign(callback: CriteriaCallback): void;
   equals(value: T): boolean;
   key: keyof O;
   value: T;
@@ -19,7 +19,7 @@ export class Criteria<T = any, O extends LiteralObject = LiteralObject>
     public readonly value: T
   ) {}
 
-  public assign(callback: CallbackCriteria): void {
+  public assign(callback: CriteriaCallback): void {
     callback(this.key, this.value);
   }
 
