@@ -1,6 +1,6 @@
 {
   "name": "@rolster/commons",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "type": "module",
   "description": "Commons utilities package compatible with Typescript projects.",
   "license": "MIT",
@@ -11,6 +11,9 @@
       "email": "ing.dacastillop@gmail.com"
     }
   ],
+  "types": "./dist/esm/index.d.ts",
+  "main": "./dist/esm/index.js",
+  "module": "./dist/esm/index.js",
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
@@ -44,7 +47,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/rolster-developments/typescript-commons.git"
+    "url": "git+https://github.com/rolster-developments/typescript-commons.git"
   },
   "keywords": [
     "rolster",
