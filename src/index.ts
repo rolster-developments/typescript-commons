@@ -1,6 +1,7 @@
 export * from './helpers/base64-helper';
 export * from './helpers/clone-helper';
 export * from './helpers/currency-format-helper';
+export * from './helpers/debounced-timeout-helper';
 export * from './helpers/general-helper';
 export * from './helpers/number-helper';
 export * from './helpers/promise-helper';
