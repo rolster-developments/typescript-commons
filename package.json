@@ -22,6 +22,14 @@
         "import": "./dist/es/index.mjs"
       },
       "default": "./dist/es/index.mjs"
+    },
+    "./dom": {
+      "types": "./dist/esm/dom.d.ts",
+      "node": {
+        "require": "./dist/cjs/dom.cjs",
+        "import": "./dist/es/dom.mjs"
+      },
+      "default": "./dist/es/dom.mjs"
     }
   },
   "files": [
