@@ -184,6 +184,10 @@ export class BigDecimal {
       : roundPrecision(this, precision, 'half-to-even');
   }
 
+  public roundWith(strategy: RoundStrategy): number {
+    return roundPrecision(this, strategy.precision, strategy.roundMode).data;
+  }
+
   public isNegative(): boolean {
     return this.signed === SIGNED_NEGATIVE;
   }
@@ -207,15 +211,18 @@ export class BigDecimal {
       return false;
     }
 
+    const decimals1 = removeZerosInDecimals([...this.decimals]);
+    const decimals2 = removeZerosInDecimals([...bigDecimal.decimals]);
+
     if (
       this.integers.length !== bigDecimal.integers.length ||
-      this.decimals.length !== bigDecimal.decimals.length
+      decimals1.length !== decimals2.length
     ) {
       return false;
     }
 
-    const numbers1 = [...this.integers, ...this.decimals];
-    const numbers2 = [...bigDecimal.integers, ...bigDecimal.decimals];
+    const numbers1 = [...this.integers, ...decimals1];
+    const numbers2 = [...bigDecimal.integers, ...decimals2];
 
     for (let i = 0; i < numbers1.length; ++i) {
       if (numbers1[i] !== numbers2[i]) {
@@ -329,13 +336,14 @@ function formatDecimal(decimal: string): string {
 }
 
 function decimalsToChunks(decimals: string | number): number[] {
-  decimals = String(decimals).slice(0, 15);
+  decimals = String(decimals);
+
   if (!decimals.length) {
     return [];
   }
 
   if (decimals.length <= SAFE_BASE_LOG) {
-    return [+formatDecimal(decimals)];
+    return removeZerosInDecimals([+formatDecimal(decimals)]);
   }
 
   const _decimals = [];
@@ -749,21 +757,21 @@ function operationDivide(
 
   const _precision = numerator.length + precision + length2;
   const _numerator = numerator.padEnd(_precision, '0');
-  const _denominador = +denominator;
+  const _denominador = BigInt(denominator);
 
   let result = '';
-  let remainder = 0;
+  let remainder = 0n;
 
   for (let i = 0; i < _numerator.length; i++) {
-    const digit = +_numerator[i];
+    const digit = BigInt(+_numerator[i]);
 
-    const value = remainder * 10 + digit;
+    const value = remainder * 10n + digit;
 
     if (value < _denominador) {
       result += '0';
       remainder = value;
     } else {
-      const quotient = Math.floor(value / _denominador);
+      const quotient = value / _denominador;
 
       result += quotient.toString();
       remainder = value % _denominador;

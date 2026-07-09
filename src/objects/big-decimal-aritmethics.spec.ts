@@ -117,7 +117,7 @@ describe('BigDecimal Class - Aritmethic Operations', () => {
     expect(bigDecimal(1).divide(-97).data).toBe(-0.010309278350515);
 
     expect(bigDecimal(1).divide(3).data).toBe(0.333333333333333);
-    expect(bigDecimal(12.345).divide(6.789).data).toBe(1.818382677861246);
+    expect(bigDecimal(12.345).divide(6.789).data).toBe(1.8183826778612462);
     expect(bigDecimal(0.001).divide(0.002).data).toBe(0.5);
     expect(bigDecimal(123456.789).divide(987.654).data).toBe(
       125.00003948751284
