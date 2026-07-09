@@ -1,8 +1,8 @@
 type Signed = -1 | 0 | 1;
 
 interface BigDecimalProps {
-  decimals: number[];
-  integers: number[];
+  decimals: readonly number[];
+  integers: readonly number[];
   signed: Signed;
 }
 
@@ -42,9 +42,9 @@ let _roundStrategy: RoundStrategy = {
 export class BigDecimal {
   public readonly signed: Signed;
 
-  public readonly integers: number[];
+  public readonly integers: readonly number[];
 
-  public readonly decimals: number[];
+  public readonly decimals: readonly number[];
 
   protected constructor(value: BigDecimalValue | BigDecimal) {
     const props = bigDecimalPropsFromValue(value);
@@ -271,7 +271,7 @@ export function roundStrategy(strategy: RoundStrategy): void {
   _roundStrategy = strategy;
 }
 
-function integersIsZero(numbers: number[]): boolean {
+function integersIsZero(numbers: readonly number[]): boolean {
   return numbers.length === 1 && numbers[0] === 0;
 }
 
@@ -279,9 +279,9 @@ function valueToBigDecimal(value: BigDecimalValue): BigDecimal {
   return value instanceof BigDecimal ? value : BigDecimal.create(value);
 }
 
-function removeZerosInIntegers(integers: number[]): number[] {
+function removeZerosInIntegers(integers: readonly number[]): number[] {
   if (integersIsZero(integers)) {
-    return integers;
+    return [...integers];
   }
 
   const firstNonZero = integers.findIndex((integer) => integer !== 0);
@@ -303,12 +303,14 @@ function integersToChunks(integers: string | number): number[] {
   return _integers;
 }
 
-function removeZerosInDecimals(decimals: number[]): number[] {
-  while (decimals.length > 0 && decimals[decimals.length - 1] === 0) {
-    decimals.pop();
+function removeZerosInDecimals(decimals: readonly number[]): number[] {
+  let end = decimals.length;
+
+  while (end > 0 && decimals[end - 1] === 0) {
+    end--;
   }
 
-  return decimals;
+  return decimals.slice(0, end);
 }
 
 function removeLeadingZeros(numberStr: string): string {
@@ -349,7 +351,7 @@ function decimalsToChunks(decimals: string | number): number[] {
   return _decimals;
 }
 
-function integersToString(integers: number[]): string {
+function integersToString(integers: readonly number[]): string {
   return integers.reduce((total, integer, index) => {
     return (total +=
       index !== 0
@@ -358,7 +360,7 @@ function integersToString(integers: number[]): string {
   }, '');
 }
 
-function decimalsToString(decimals: number[]): string {
+function decimalsToString(decimals: readonly number[]): string {
   return decimals.reduce((total, decimal) => {
     return (total += String(decimal).padStart(SAFE_BASE_LOG, '0'));
   }, '');
@@ -445,43 +447,23 @@ function bigDecimalPropsFromValue(
     return bigDecimalFromString(value);
   }
 
+  const decimals = removeZerosInDecimals(value.decimals);
+  const integers = removeZerosInIntegers(value.integers);
+
   return {
-    decimals: removeZerosInDecimals(value.decimals),
-    integers: removeZerosInIntegers(value.integers),
+    decimals,
+    integers,
     signed:
-      !value.decimals.length && integersIsZero(value.integers)
+      !decimals.length && integersIsZero(integers)
         ? SIGNED_NEUTRO
         : value.signed
   };
 }
 
 function bigDecimalToString(number: BigDecimal): string {
-  let integerStr = '';
-  let decimalStr = '';
-
-  for (let i = number.integers.length - 1; i >= 0; i--) {
-    const integer = String(number.integers[i]);
-
-    if (i !== 0) {
-      integerStr = integer.padStart(SAFE_BASE_LOG, '0') + integerStr;
-    } else {
-      integerStr = integer + integerStr;
-    }
-  }
-
-  for (let i = 0; i < number.decimals.length; i++) {
-    const decimal = String(number.decimals[i]);
-
-    if (i === 0) {
-      decimalStr += decimal.padStart(SAFE_BASE_LOG, '0');
-    } else {
-      decimalStr += decimal;
-    }
-  }
-
-  const numberStr = decimalStr
-    ? `${integerStr}.${decimalStr.replace(/0+$/, '')}`
-    : integerStr;
+  const integerStr = integersToString(number.integers);
+  const decimalStr = decimalsToString(number.decimals).replace(/0+$/, '');
+  const numberStr = decimalStr ? `${integerStr}.${decimalStr}` : integerStr;
 
   return number.isNegative() ? `-${numberStr}` : numberStr;
 }
@@ -520,7 +502,7 @@ function compareTo(number1: BigDecimal, number2: BigDecimal): number {
   return 0;
 }
 
-function normalizeIntegers(numbers: number[]): number[] {
+function normalizeIntegers(numbers: readonly number[]): number[] {
   const _numbers: number[] = [];
 
   for (let i = 0; i < numbers.length; i++) {
@@ -538,9 +520,13 @@ function normalizeIntegers(numbers: number[]): number[] {
   return _numbers;
 }
 
-function plusNumbers(number1: number[], number2: number[], carry = 0) {
-  number1 = number1.reverse();
-  number2 = number2.reverse();
+function plusNumbers(
+  number1: readonly number[],
+  number2: readonly number[],
+  carry = 0
+) {
+  number1 = [...number1].reverse();
+  number2 = [...number2].reverse();
 
   const length =
     number1.length > number2.length ? number1.length : number2.length;
@@ -562,7 +548,11 @@ function plusNumbers(number1: number[], number2: number[], carry = 0) {
   return { carry, numbers };
 }
 
-function plusNumbersOnCarry(number1: number[], number2: number[], carry = 0) {
+function plusNumbersOnCarry(
+  number1: readonly number[],
+  number2: readonly number[],
+  carry = 0
+) {
   const result = plusNumbers(number1, number2, carry);
 
   result.carry > 0 && result.numbers.unshift(result.carry);
@@ -570,9 +560,13 @@ function plusNumbersOnCarry(number1: number[], number2: number[], carry = 0) {
   return result.numbers;
 }
 
-function minusNumbers(numbers1: number[], numbers2: number[], carry = 0) {
-  numbers1 = numbers1.reverse();
-  numbers2 = numbers2.reverse();
+function minusNumbers(
+  numbers1: readonly number[],
+  numbers2: readonly number[],
+  carry = 0
+) {
+  numbers1 = [...numbers1].reverse();
+  numbers2 = [...numbers2].reverse();
 
   const length =
     numbers1.length > numbers2.length ? numbers1.length : numbers2.length;
@@ -596,7 +590,10 @@ function minusNumbers(numbers1: number[], numbers2: number[], carry = 0) {
 
 type Decimals = [number[], number[]];
 
-function fillArrayDecimals(decimals1: number[], decimals2: number[]): Decimals {
+function fillArrayDecimals(
+  decimals1: readonly number[],
+  decimals2: readonly number[]
+): Decimals {
   const maxLength = Math.max(decimals1.length, decimals2.length);
 
   const _decimals1 = [
