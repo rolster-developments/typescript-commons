@@ -3,6 +3,7 @@ export * from './helpers/clone-helper';
 export * from './helpers/currency-format-helper';
 export * from './helpers/debounced-timeout-helper';
 export * from './helpers/general-helper';
+export * from './helpers/file-helper';
 export * from './helpers/number-helper';
 export * from './helpers/promise-helper';
 export * from './objects/big-decimal';

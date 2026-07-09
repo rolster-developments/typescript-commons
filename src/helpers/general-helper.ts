@@ -70,7 +70,7 @@ export function callback<T = any>(
 }
 
 function normalizeValue(value: any): any {
-  return typeof value === 'object'
+  return value !== null && typeof value === 'object'
     ? Array.isArray(value)
       ? value.map((value) => normalizeValue(value))
       : normalizeJson(value)
