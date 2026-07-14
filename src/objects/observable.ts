@@ -6,8 +6,8 @@ export interface Observable<T = any> {
   close: () => void;
   listen(observer: Observer<T>): Unsubscription;
   next(value: T): void;
-  readonly value: T;
   subscribe(observer: Observer<T>): Unsubscription;
+  readonly value: T;
 }
 
 class ManagerObservable<T = any> implements Observable<T> {

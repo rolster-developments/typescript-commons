@@ -673,7 +673,7 @@ function operationMultiply(
   const numbers1 = [...number1.integers, ...number1.decimals];
   const numbers2 = [...number2.integers, ...number2.decimals];
 
-  let _numbers: number[] = Array(length1 + length2).fill(0);
+  const _numbers: number[] = Array(length1 + length2).fill(0);
 
   for (let i = length2 - 1; i >= 0; i--) {
     let carry = 0;

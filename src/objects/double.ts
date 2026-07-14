@@ -9,8 +9,8 @@ type DoubleValue = string | number | Double | DoubleProps;
 interface DividerValue {
   denominator: Double;
   numerator: Double;
-  precision?: number;
   places?: boolean;
+  precision?: number;
 }
 
 const SAFE_INTEGER_MAX = 9007199254740991;
@@ -409,7 +409,7 @@ function parseDouble(signed: number, doubleStr: string): DoubleProps {
     numberStr = numberStr - i - 1;
     length -= i;
 
-    let base = Math.floor(numberStr / BASE_LOG);
+    const base = Math.floor(numberStr / BASE_LOG);
     const numbers = [];
 
     i = (numberStr + 1) % BASE_LOG;
@@ -622,7 +622,7 @@ function doubleMinus(double1: Double, double2: Double, signed: number): Double {
   const decimalsLength =
     decimals1.length > decimals2.length ? decimals1.length : decimals2.length;
 
-  let _base = double1.base > double2.base ? double1.base : double2.base;
+  const _base = double1.base > double2.base ? double1.base : double2.base;
 
   const _numbers: number[] = [];
   let carry = 0;
@@ -757,10 +757,10 @@ function operationDivide(divider: DividerValue): Double {
 
   const factor = getFactorForDivider(divider.denominator);
 
-  let numerator =
+  const numerator =
     factor > 1 ? divider.numerator.multiply(factor) : divider.numerator;
 
-  let denominator =
+  const denominator =
     factor > 1 ? divider.denominator.multiply(factor) : divider.denominator;
 
   const signed =
@@ -769,7 +769,7 @@ function operationDivide(divider: DividerValue): Double {
   let index1, index2, precTemp;
   let numbers1 = [...numerator.numbers];
   let numbers2 = [...denominator.numbers];
-  let numbers: number[] = [];
+  const numbers: number[] = [];
 
   let length1 = numerator.numbers.length;
   let length2 = denominator.numbers.length;
@@ -828,7 +828,7 @@ function operationDivide(divider: DividerValue): Double {
       redimDecimals[redimLength++] = 0;
     }
 
-    let resetDecimals = numbers2.slice();
+    const resetDecimals = numbers2.slice();
     resetDecimals.unshift(0);
     let first2 = numbers2[0];
 
@@ -1060,7 +1060,7 @@ function round(double: Double, precisionDef: number, rm?: any): Double {
   if (rm) {
     const pow = Math.pow(10, numberDigits - presicion - 1);
 
-    let roundDigit = (roundNumber / pow) % 10 | 0;
+    const roundDigit = (roundNumber / pow) % 10 | 0;
 
     doRound =
       precisionDef < 0 || numbers[index + 1] !== void 0 || roundNumber % pow;
@@ -1109,7 +1109,7 @@ function round(double: Double, precisionDef: number, rm?: any): Double {
 
   let size = Math.pow(10, BASE_LOG - length);
   let base = double.base;
-  let signed = double.signed;
+  const signed = double.signed;
 
   if (length == 0) {
     numbers.length = index;
@@ -1161,7 +1161,7 @@ function round(double: Double, precisionDef: number, rm?: any): Double {
 }
 
 function numbersToString(numbers: number[]): string {
-  let indexLastWord = numbers.length - 1;
+  const indexLastWord = numbers.length - 1;
   let str = '';
   let word = numbers[0];
 
@@ -1204,8 +1204,8 @@ function doubleToString(
   sd?: number
 ): string {
   let digits = numbersToString(double.numbers);
-  let length = digits.length;
-  let base = base10Exp(double);
+  const length = digits.length;
+  const base = base10Exp(double);
   let countZero;
 
   if (isExponent) {
