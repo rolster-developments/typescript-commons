@@ -8,9 +8,11 @@ export interface SealedAbstract<R, T extends SealedState<R>, V, C = T> {
   when(resolver: C, otherwise?: () => void): V;
 }
 
-export class SealedPartial<R, V, T extends SealedState<R>>
-  implements SealedAbstract<R, T, Undefined<R>, Partial<T>>
-{
+export class SealedPartial<
+  R,
+  V,
+  T extends SealedState<R>
+> implements SealedAbstract<R, T, Undefined<R>, Partial<T>> {
   protected _otherwise?: () => void;
 
   protected constructor(
@@ -29,7 +31,7 @@ export class SealedPartial<R, V, T extends SealedState<R>>
 
     const _otherwise = otherwise || this._otherwise;
 
-    _otherwise && _otherwise();
+    _otherwise?.();
 
     return handler ? handler(this.value) : undefined;
   }
@@ -48,7 +50,7 @@ export class Sealed<R, V, T extends SealedState<R>>
 
     const _otherwise = otherwise ?? this._otherwise;
 
-    _otherwise && _otherwise();
+    _otherwise?.();
 
     if (handler) {
       return handler(this.value);

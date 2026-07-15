@@ -27,7 +27,7 @@ export function parse<T>(value: string): T {
 }
 
 export function evalValueOrFunction<T>(value: ValueOrFunction<T>): T {
-  return typeof value === 'function' ? (value as Function)() : value;
+  return typeof value === 'function' ? (value as () => T)() : value;
 }
 
 export function freeze<T>(value: T): Readonly<T> {

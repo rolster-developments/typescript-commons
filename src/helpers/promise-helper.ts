@@ -11,7 +11,9 @@ export async function rethrow<T>(
   try {
     await promise;
   } catch (err) {
-    catchError && catchError(err);
+    if (catchError) {
+      catchError(err);
+    }
 
     throw err;
   }
@@ -24,7 +26,9 @@ export async function silence<T>(
   try {
     await promise;
   } catch (err) {
-    catchError && catchError(err);
+    if (catchError) {
+      catchError(err);
+    }
 
     return undefined;
   }
@@ -37,7 +41,9 @@ export async function unawaited<T>(
   try {
     return await promise;
   } catch (err) {
-    catchError && catchError(err);
+    if (catchError) {
+      catchError(err);
+    }
 
     return undefined;
   }

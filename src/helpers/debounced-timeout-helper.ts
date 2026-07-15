@@ -7,7 +7,9 @@ export function createDebouncedTimeout(delay?: number): DebouncedTimeout {
   let timeoutId: any = undefined;
 
   function cancel(): void {
-    timeoutId && clearTimeout(timeoutId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 
   function schedule(callback: () => void, _delay?: number): void {

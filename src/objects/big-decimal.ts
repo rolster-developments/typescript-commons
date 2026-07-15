@@ -351,16 +351,18 @@ function decimalsToChunks(decimals: string | number): number[] {
 
 function integersToString(integers: number[]): string {
   return integers.reduce((total, integer, index) => {
-    return (total +=
-      index !== 0
+    return (
+      total +
+      (index !== 0
         ? String(integer).padStart(SAFE_BASE_LOG, '0')
-        : String(integer));
+        : String(integer))
+    );
   }, '');
 }
 
 function decimalsToString(decimals: number[]): string {
   return decimals.reduce((total, decimal) => {
-    return (total += String(decimal).padStart(SAFE_BASE_LOG, '0'));
+    return total + String(decimal).padStart(SAFE_BASE_LOG, '0');
   }, '');
 }
 
@@ -531,7 +533,9 @@ function normalizeIntegers(numbers: number[]): number[] {
     } else {
       const beforeIsDefined = i > 0 ? numbers[i - 1] > 0 : false;
 
-      beforeIsDefined && _numbers.push(number);
+      if (beforeIsDefined) {
+        _numbers.push(number);
+      }
     }
   }
 
@@ -565,7 +569,9 @@ function plusNumbers(number1: number[], number2: number[], carry = 0) {
 function plusNumbersOnCarry(number1: number[], number2: number[], carry = 0) {
   const result = plusNumbers(number1, number2, carry);
 
-  result.carry > 0 && result.numbers.unshift(result.carry);
+  if (result.carry > 0) {
+    result.numbers.unshift(result.carry);
+  }
 
   return result.numbers;
 }
@@ -838,7 +844,9 @@ function roundPrecisionZero(
 
   const result = plusNumbers(number.integers, [1]);
 
-  result.carry > 0 && result.numbers.unshift(result.carry);
+  if (result.carry > 0) {
+    result.numbers.unshift(result.carry);
+  }
 
   return BigDecimal.create({
     decimals: [],
@@ -899,7 +907,7 @@ function roundPrecisionNegative(
   roundMode: RoundMode
 ): BigDecimal {
   const integersStr = number.integers.reduce((total, integers) => {
-    return (total += String(integers));
+    return total + String(integers);
   }, '');
 
   if (integersStr.length <= precision) {
