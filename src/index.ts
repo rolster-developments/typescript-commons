@@ -1,4 +1,3 @@
-export * from './helpers/base64-helper';
 export * from './helpers/clone-helper';
 export * from './helpers/currency-format-helper';
 export * from './helpers/debounced-timeout-helper';
@@ -9,7 +8,6 @@ export * from './objects/big-decimal';
 export * from './objects/criteria';
 export * from './objects/observable';
 export * from './objects/queque';
-export * from './objects/scroller';
 export * from './objects/secure-map';
 export * from './promises/delay-promise';
 export * from './promises/secure-promise';
