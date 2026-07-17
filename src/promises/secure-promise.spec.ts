@@ -1,4 +1,4 @@
-import { securePromise } from './secure-promise';
+import { securePromise, securePromiseOfValue } from './secure-promise';
 
 describe('securePromise', () => {
   it('should call the callback and resolve', async () => {
@@ -87,5 +87,93 @@ describe('securePromise', () => {
     const sp = securePromise(callback, catchError);
 
     await expect(sp.resolve()).rejects.toThrow('fail');
+  });
+});
+
+describe('securePromiseOfValue', () => {
+  it('should resolve with the given value', async () => {
+    const sp = securePromiseOfValue(42);
+
+    const result = await sp.resolve();
+
+    expect(result).toBe(42);
+  });
+
+  it('should resolve with an object value', async () => {
+    const value = { foo: 'bar' };
+    const sp = securePromiseOfValue(value);
+
+    const result = await sp.resolve();
+
+    expect(result).toBe(value);
+  });
+
+  it('should resolve with undefined', async () => {
+    const sp = securePromiseOfValue(undefined);
+
+    const result = await sp.resolve();
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should cache the promise', async () => {
+    const sp = securePromiseOfValue({});
+
+    const first = sp.resolve();
+    const second = sp.resolve();
+
+    expect(first).toBe(second);
+  });
+
+  it('should report isInstanced correctly', () => {
+    const sp = securePromiseOfValue(42);
+
+    expect(sp.isInstanced()).toBe(false);
+
+    sp.resolve();
+
+    expect(sp.isInstanced()).toBe(true);
+  });
+
+  it('should report isRequesting after resolve call', () => {
+    const sp = securePromiseOfValue(42);
+
+    expect(sp.isRequesting()).toBe(false);
+
+    sp.resolve();
+
+    expect(sp.isRequesting()).toBe(true);
+  });
+
+  it('should report isRequesting as false after resolution', async () => {
+    const sp = securePromiseOfValue(42);
+
+    await sp.resolve();
+
+    expect(sp.isRequesting()).toBe(false);
+  });
+
+  it('should reset the cached promise', async () => {
+    const sp = securePromiseOfValue(42);
+
+    const promiseA = sp.resolve();
+    expect(sp.isInstanced()).toBe(true);
+
+    sp.reset();
+    expect(sp.isInstanced()).toBe(false);
+
+    const promiseB = sp.resolve();
+    expect(promiseA).not.toBe(promiseB);
+  });
+
+  it('should refresh by clearing cache and resolving', async () => {
+    const sp = securePromiseOfValue(42);
+
+    const promiseA = sp.resolve();
+
+    const promiseB = sp.refresh();
+
+    expect(promiseA).not.toBe(promiseB);
+    await expect(promiseB).resolves.toBe(42);
   });
 });

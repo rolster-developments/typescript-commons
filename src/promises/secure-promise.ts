@@ -67,3 +67,7 @@ export function securePromise<T = any>(
     resolve
   };
 }
+
+export function securePromiseOfValue<T = any>(value: T): SecurePromise<T> {
+  return securePromise(() => Promise.resolve(value));
+}
