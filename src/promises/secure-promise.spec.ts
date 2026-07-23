@@ -41,6 +41,101 @@ describe('securePromise', () => {
     expect(sp.isRequesting()).toBe(true);
   });
 
+  it('should report isResolved only after the promise is fulfilled', async () => {
+    let resolveCallback: (value: number) => void = () => {};
+
+    const sp = securePromise(
+      () => new Promise<number>((resolve) => (resolveCallback = resolve))
+    );
+
+    expect(sp.isResolved()).toBe(false);
+
+    const promise = sp.resolve();
+
+    expect(sp.isInstanced()).toBe(true);
+    expect(sp.isResolved()).toBe(false);
+
+    resolveCallback(42);
+    await promise;
+
+    expect(sp.isResolved()).toBe(true);
+    expect(sp.isRequesting()).toBe(false);
+  });
+
+  it('should report isResolved as false after reset', async () => {
+    const sp = securePromise(() => Promise.resolve(42));
+
+    await sp.resolve();
+    expect(sp.isResolved()).toBe(true);
+
+    sp.reset();
+    expect(sp.isResolved()).toBe(false);
+  });
+
+  it('should report isResolved as false while refreshing', async () => {
+    const sp = securePromise(() => Promise.resolve(42));
+
+    await sp.resolve();
+    expect(sp.isResolved()).toBe(true);
+
+    const promise = sp.refresh();
+    expect(sp.isResolved()).toBe(false);
+
+    await promise;
+    expect(sp.isResolved()).toBe(true);
+  });
+
+  it('should report isError when promise is rejected', async () => {
+    const sp = securePromise(() => Promise.reject(new Error('fail')));
+
+    expect(sp.isError()).toBe(false);
+
+    await expect(sp.resolve()).rejects.toThrow('fail');
+
+    expect(sp.isError()).toBe(true);
+    expect(sp.isResolved()).toBe(false);
+  });
+
+  it('should report isError when catchError returns fallback', async () => {
+    const sp = securePromise(
+      () => Promise.reject(new Error('fail')),
+      () => 'fallback'
+    );
+
+    await expect(sp.resolve()).resolves.toBe('fallback');
+
+    expect(sp.isError()).toBe(true);
+    expect(sp.isResolved()).toBe(false);
+  });
+
+  it('should report isError as false after reset', async () => {
+    const sp = securePromise(() => Promise.reject(new Error('fail')));
+
+    await expect(sp.resolve()).rejects.toThrow('fail');
+    expect(sp.isError()).toBe(true);
+
+    sp.reset();
+    expect(sp.isError()).toBe(false);
+  });
+
+  it('should clear isError when a new attempt starts', async () => {
+    let failing = true;
+
+    const sp = securePromise(() =>
+      failing ? Promise.reject(new Error('fail')) : Promise.resolve(42)
+    );
+
+    await expect(sp.resolve()).rejects.toThrow('fail');
+    expect(sp.isError()).toBe(true);
+
+    failing = false;
+
+    await expect(sp.resolve()).resolves.toBe(42);
+
+    expect(sp.isError()).toBe(false);
+    expect(sp.isResolved()).toBe(true);
+  });
+
   it('should reset the cached promise', async () => {
     let counter = 0;
     const callback = vi.fn(() => Promise.resolve(++counter));
