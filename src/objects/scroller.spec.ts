@@ -75,9 +75,7 @@ describe('ScrollerElement', () => {
       const element = createMockElement({ scrollTop: 300 });
       const scroller = new ScrollerElement(element);
 
-      expect(scroller.verticalPercentage).toBe(
-        (300 / 2000 - 500) * 100
-      );
+      expect(scroller.verticalPercentage).toBe((300 / 2000 - 500) * 100);
     });
   });
 
@@ -118,9 +116,7 @@ describe('ScrollerElement', () => {
       const element = createMockElement({ scrollLeft: 200 });
       const scroller = new ScrollerElement(element);
 
-      expect(scroller.horizontalPercentage).toBe(
-        (200 / 1000 - 500) * 100
-      );
+      expect(scroller.horizontalPercentage).toBe((200 / 1000 - 500) * 100);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { observable,Observer } from '../objects/observable';
+import { observable, Observer } from '../objects/observable';
 import { SealedPartial, SealedState } from '../results/sealed';
 
 interface StreamResponse<T> {

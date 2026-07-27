@@ -16,34 +16,30 @@ describe('fromPromise', () => {
 
 describe('rethrow', () => {
   it('should resolve when the promise resolves', async () => {
-    await expect(
-      rethrow(Promise.resolve('ok'))
-    ).resolves.toBeUndefined();
+    await expect(rethrow(Promise.resolve('ok'))).resolves.toBeUndefined();
   });
 
   it('should call catchError and rethrow on rejection', async () => {
     const catchError = vi.fn();
     const error = new Error('test error');
 
-    await expect(
-      rethrow(Promise.reject(error), catchError)
-    ).rejects.toThrow('test error');
+    await expect(rethrow(Promise.reject(error), catchError)).rejects.toThrow(
+      'test error'
+    );
 
     expect(catchError).toHaveBeenCalledWith(error);
   });
 
   it('should rethrow even without catchError', async () => {
-    await expect(
-      rethrow(Promise.reject(new Error('fail')))
-    ).rejects.toThrow('fail');
+    await expect(rethrow(Promise.reject(new Error('fail')))).rejects.toThrow(
+      'fail'
+    );
   });
 });
 
 describe('silence', () => {
   it('should resolve when the promise resolves', async () => {
-    await expect(
-      silence(Promise.resolve('ok'))
-    ).resolves.toBeUndefined();
+    await expect(silence(Promise.resolve('ok'))).resolves.toBeUndefined();
   });
 
   it('should call catchError and return undefined on rejection', async () => {

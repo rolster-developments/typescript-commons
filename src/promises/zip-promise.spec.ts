@@ -56,10 +56,7 @@ describe('zipPromise', () => {
 
   it('should use custom errorValue when continueOnError', async () => {
     const results = await zipPromise(
-      [
-        () => Promise.resolve('a'),
-        () => Promise.reject(new Error('fail'))
-      ],
+      [() => Promise.resolve('a'), () => Promise.reject(new Error('fail'))],
       { continueOnError: true, errorValue: 'fallback' }
     );
 

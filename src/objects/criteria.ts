@@ -11,9 +11,10 @@ export interface AbstractCriteria<
   value: T;
 }
 
-export class Criteria<T = any, O extends LiteralObject = LiteralObject>
-  implements AbstractCriteria<T, O>
-{
+export class Criteria<
+  T = any,
+  O extends LiteralObject = LiteralObject
+> implements AbstractCriteria<T, O> {
   constructor(
     public readonly key: keyof O,
     public readonly value: T

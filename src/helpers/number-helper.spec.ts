@@ -1,4 +1,4 @@
-import { ceil, floor, halfToEven,round } from './number-helper';
+import { ceil, floor, halfToEven, round } from './number-helper';
 
 describe('NumberHelper', () => {
   it('should round remove all decimals', () => {

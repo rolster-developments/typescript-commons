@@ -143,7 +143,10 @@ const groups = new SecureMap<string[]>(() => []);
 groups.request('admins').push('Daniel');
 
 // Comparable set of key/value criteria
-const filter = Criterias.fromLiteralObject({ status: 'active', city: 'Bogotá' });
+const filter = Criterias.fromLiteralObject({
+  status: 'active',
+  city: 'Bogotá'
+});
 filter.value('status'); // 'active'
 filter.toLiteralObject(); // { status: 'active', city: 'Bogotá' }
 ```

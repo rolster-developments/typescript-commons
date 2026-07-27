@@ -14,9 +14,7 @@ describe('downloadBlob', () => {
     const mockAnchor = document.createElement('a');
     mockAnchor.click = anchorClick;
 
-    const spy = vi
-      .spyOn(document, 'createElement')
-      .mockReturnValue(mockAnchor);
+    const spy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor);
 
     const blob = new Blob(['test'], { type: 'text/plain' });
 

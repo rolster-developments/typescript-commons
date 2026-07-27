@@ -10,21 +10,17 @@ describe('currencyFormat', () => {
   });
 
   it('should format with decimals', () => {
-    expect(
-      currencyFormat({ value: 1234.5678, decimals: 2 })
-    ).toBe('1.234,56');
+    expect(currencyFormat({ value: 1234.5678, decimals: 2 })).toBe('1.234,56');
   });
 
   it('should format with symbol', () => {
-    expect(
-      currencyFormat({ value: 1234567, symbol: '$' })
-    ).toBe('$ 1.234.567');
+    expect(currencyFormat({ value: 1234567, symbol: '$' })).toBe('$ 1.234.567');
   });
 
   it('should format with decimals and symbol', () => {
-    expect(
-      currencyFormat({ value: 1234.56, decimals: 2, symbol: '€' })
-    ).toBe('€ 1.234,56');
+    expect(currencyFormat({ value: 1234.56, decimals: 2, symbol: '€' })).toBe(
+      '€ 1.234,56'
+    );
   });
 
   it('should format zero', () => {
@@ -44,8 +40,8 @@ describe('currencyFormat', () => {
   });
 
   it('should handle negative with decimals and symbol', () => {
-    expect(
-      currencyFormat({ value: -9876.54, decimals: 1, symbol: 'R$' })
-    ).toBe('R$ -9.876,5');
+    expect(currencyFormat({ value: -9876.54, decimals: 1, symbol: 'R$' })).toBe(
+      'R$ -9.876,5'
+    );
   });
 });
