@@ -130,7 +130,7 @@ counter.close(); // removes every observer
 ### Collections & criteria
 
 ```typescript
-import { Queque, SecureMap, Criterias } from '@rolster/commons';
+import { Queque, SecureMap, Criterias, SelectionSet } from '@rolster/commons';
 
 // FIFO queue (linked list)
 const queue = Queque.fromArray([1, 2, 3]);
@@ -149,6 +149,20 @@ const filter = Criterias.fromLiteralObject({
 });
 filter.value('status'); // 'active'
 filter.toLiteralObject(); // { status: 'active', city: 'Bogotá' }
+
+// Immutable selection of any kind of value; every command returns a new
+// instance, or the same one when the operation changes nothing
+const tags = new SelectionSet(['pending']); // default comparator: ===
+tags.toggle('urgent').values; // ['pending', 'urgent']
+
+const articles = new SelectionSet<Article>([], (a, b) => a.uuid === b.uuid);
+articles.select(article).contains({ ...article, name: 'Changed' }); // true
+
+articles.containsAll(page); // every value of the page is selected
+articles.containsAny(page); // for the indeterminate state of a checkbox
+articles.toggleAll(page); // selects the pending ones, or unselects them all
+articles.refresh(page); // retains only what is still present
+articles.clear(); // discards everything
 ```
 
 ### Promises
