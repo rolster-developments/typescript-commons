@@ -2,7 +2,6 @@ import { downloadBlob } from './file-helper';
 
 describe('downloadBlob', () => {
   it('should create a link element and trigger download', () => {
-    const createElement = document.createElement.bind(document);
     const createObjectURL = vi.fn(() => 'blob:mock-url');
     const revokeObjectURL = vi.fn();
 

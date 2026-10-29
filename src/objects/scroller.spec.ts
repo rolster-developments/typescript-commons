@@ -17,7 +17,10 @@ function createMockElement(
   };
 
   for (const key in overrides) {
-    descriptors[key] = { value: overrides[key], configurable: true };
+    descriptors[key] = {
+      value: overrides[key as keyof HTMLElement],
+      configurable: true
+    };
   }
 
   Object.defineProperties(element, descriptors);

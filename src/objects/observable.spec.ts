@@ -1,4 +1,4 @@
-import { observable, Observable } from './observable';
+import { observable } from './observable';
 
 describe('observable', () => {
   it('should create an observable with initial value', () => {

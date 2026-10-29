@@ -12,7 +12,14 @@ describe('ViewState', () => {
     const state = ViewState.success('data');
 
     expect(state.is('success')).toBe(true);
-    expect(state.when({ success: (v) => v })).toBe('data');
+    expect(
+      state.when({
+        loading: () => 'loading',
+        success: (v) => v,
+        empty: () => 'empty',
+        failure: () => 'failure'
+      })
+    ).toBe('data');
   });
 
   it('should create empty state', () => {
@@ -25,7 +32,14 @@ describe('ViewState', () => {
     const state = ViewState.failure('error');
 
     expect(state.is('failure')).toBe(true);
-    expect(state.when({ failure: (v) => v })).toBe('error');
+    expect(
+      state.when({
+        loading: () => 'loading',
+        success: () => 'success',
+        empty: () => 'empty',
+        failure: (v) => v
+      })
+    ).toBe('error');
   });
 
   it('should handle when with full resolver', () => {

@@ -27,7 +27,7 @@ describe('delayPromise', () => {
 
   it('should not resolve before the delay', () => {
     const callback = vi.fn(() => 'done');
-    const promise = delayPromise(callback, 100);
+    delayPromise(callback, 100);
 
     vi.advanceTimersByTime(50);
 
