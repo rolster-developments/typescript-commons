@@ -1,7 +1,7 @@
 import { fromPromise } from '../helpers/promise-helper';
 
 export function delayPromise<T>(
-  value: () => T | Promise<T>,
+  value: () => Awaitable<T>,
   miliseconds: number
 ): Promise<T> {
   return new Promise<T>((resolve) => {

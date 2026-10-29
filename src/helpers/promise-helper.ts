@@ -1,6 +1,6 @@
 type CatchError = (err: any) => void;
 
-export function fromPromise<T>(value: T | Promise<T>): Promise<T> {
+export function fromPromise<T>(value: Awaitable<T>): Promise<T> {
   return value instanceof Promise ? value : Promise.resolve(value);
 }
 
